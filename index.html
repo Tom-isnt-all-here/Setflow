@@ -1,60 +1,1539 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Page</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="script.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FAFAFA">
+<title>SetFlow</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+/* ─────────────────────────────────────────
+   DESIGN TOKENS  — YouVersion-inspired palette
+   ───────────────────────────────────────── */
+:root{
+  --bg:#F7F7F9;
+  --white:#FFFFFF;
+  --surface:#FFFFFF;
+  --coral:#E8622A;
+  --coral-dk:#C44F1E;
+  --coral-lt:#FDF0EB;
+  --coral-border:#F5C4AE;
+  --teal:#1A7A68;
+  --teal-lt:#E2F2EF;
+  --blue:#2558A8;
+  --blue-lt:#E4EDF8;
+  --amber:#9A6400;
+  --amber-lt:#FBF2DC;
+  --red:#B02A2A;
+  --red-lt:#FAE7E7;
+  --green:#1A7A45;
+  --green-lt:#E2F2EB;
+  --spotify:#1DB954;
+  --spotify-lt:#E2F7EB;
+  --text:#0F0F13;
+  --text2:#4A5168;
+  --text3:#9199AF;
+  --border:#E4E6ED;
+  --shadow-xs:0 1px 3px rgba(0,0,0,.05);
+  --shadow-sm:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);
+  --shadow:0 4px 16px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.04);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.14);
+  --r:14px;--r-sm:10px;--r-xs:7px;
+  --nav-h:68px;
+  --font:'Plus Jakarta Sans',sans-serif;
+}
+
+/* ── DARK MODE ── */
+[data-theme="dark"]{
+  --bg:#0F1117;
+  --white:#1A1D2E;
+  --surface:#1A1D2E;
+  --coral:#E8622A;
+  --coral-dk:#C44F1E;
+  --coral-lt:rgba(232,98,42,.15);
+  --coral-border:rgba(232,98,42,.25);
+  --teal:#1A7A68;
+  --teal-lt:rgba(26,122,104,.15);
+  --blue:#4A7FC8;
+  --blue-lt:rgba(74,127,200,.15);
+  --amber:#D4A030;
+  --amber-lt:rgba(212,160,48,.15);
+  --red:#D04444;
+  --red-lt:rgba(208,68,68,.15);
+  --green:#22A05A;
+  --green-lt:rgba(34,160,90,.15);
+  --spotify:#1DB954;
+  --spotify-lt:rgba(29,185,84,.15);
+  --text:#E8E4F0;
+  --text2:#9B99B8;
+  --text3:#585A7A;
+  --border:#252840;
+  --shadow-xs:0 1px 3px rgba(0,0,0,.3);
+  --shadow-sm:0 2px 8px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.2);
+  --shadow:0 4px 16px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.25);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.6);
+}
+
+/* ── SETTINGS MODAL ── */
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-label{font-size:14px;font-weight:700}
+.settings-sub{font-size:11px;color:var(--text2);margin-top:2px;font-weight:500}
+.toggle-wrap{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-wrap input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:12px;cursor:pointer;transition:background .2s}
+.toggle-wrap input:checked + .toggle-track{background:var(--coral)}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:white;border-radius:50%;transition:transform .2s;pointer-events:none}
+.toggle-wrap input:checked ~ .toggle-thumb{transform:translateX(20px)}
+.sens-row{padding:14px 20px;border-bottom:1px solid var(--border)}
+.sens-slider{width:100%;margin-top:8px;accent-color:var(--coral)}
+.sens-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:3px;font-weight:600}
+
+/* ── PDF SPLITTER MODAL ── */
+.splitter-drop{border:2px dashed var(--border);border-radius:var(--r);padding:24px 16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);margin:0 20px 14px}
+.splitter-drop.drag{border-color:var(--coral);background:var(--coral-lt)}
+.splitter-drop-emo{font-size:32px;margin-bottom:8px}
+.splitter-drop-title{font-size:14px;font-weight:800;margin-bottom:4px}
+.splitter-drop-sub{font-size:11px;color:var(--text2);line-height:1.5;font-weight:500}
+.splitter-song-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);margin:0 16px 8px;padding:11px 13px;display:flex;align-items:center;gap:10px}
+.splitter-song-num{width:22px;height:22px;background:var(--coral-lt);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--coral);flex-shrink:0}
+.splitter-song-info{flex:1;min-width:0}
+.splitter-song-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.splitter-song-meta{font-size:10px;color:var(--text3);margin-top:2px;font-weight:500}
+.splitter-key-badge{display:inline-block;background:var(--amber-lt);color:var(--amber);border-radius:20px;padding:2px 7px;font-size:10px;font-weight:800;margin-right:4px}
+.splitter-prog{height:3px;background:var(--border);border-radius:2px;margin:0 20px 12px;overflow:hidden}
+.splitter-prog-fill{height:100%;background:var(--coral);border-radius:2px;transition:width .3s}
+.modal-sens-bar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.modal-sens-bar label{font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0}
+.modal-sens-bar input[type=range]{flex:1;accent-color:var(--coral)}
+.modal-sens-bar span{font-size:12px;font-weight:800;color:var(--coral);width:14px;text-align:right;flex-shrink:0}
+.splitter-save-btn{margin:12px 16px 16px;width:calc(100% - 32px);background:var(--coral);color:white;border:none;border-radius:var(--r-sm);padding:14px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(232,98,42,.3);transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.splitter-save-btn:active{opacity:.88}
+.splitter-save-btn:disabled{opacity:.5;cursor:default}
+
+/* ─── RESET ─── */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);font-family:var(--font);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,textarea{font-family:var(--font)}
+img{display:block}
+a{color:inherit;text-decoration:none}
+
+/* ─── SHELL ─── */
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:430px;margin:0 auto;position:relative;overflow:hidden}
+
+/* ─── SCREENS ─── */
+.screen{position:absolute;inset:0;bottom:var(--nav-h);overflow-y:auto;display:none;flex-direction:column;background:var(--bg)}
+.screen.active{display:flex}
+.screen::-webkit-scrollbar{display:none}
+
+/* ─── TOP BAR ─── */
+.topbar{background:var(--white);padding:48px 20px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30;flex-shrink:0}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:9px}
+.logo-icon{width:30px;height:30px;background:var(--coral);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:16px;height:16px;fill:white}
+.logo-text{font-size:18px;font-weight:900;letter-spacing:-.6px;color:var(--text)}
+.logo-text em{color:var(--coral);font-style:normal}
+.hdr-actions{display:flex;gap:6px}
+.icon-btn{width:34px;height:34px;border-radius:50%;background:var(--bg);border:none;color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:background .15s}
+.icon-btn:active{background:var(--border);transform:scale(.94)}
+.icon-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ─── SCREEN HEADERS (inner pages) ─── */
+.inner-hdr{background:var(--white);padding:48px 20px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30;flex-shrink:0;display:flex;align-items:center;gap:12px}
+.back-btn{width:34px;height:34px;border-radius:50%;background:var(--bg);border:none;display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;font-size:20px;flex-shrink:0;transition:background .15s}
+.back-btn:active{background:var(--border)}
+.inner-hdr-text{flex:1}
+.inner-hdr-title{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.inner-hdr-sub{font-size:12px;color:var(--text2);margin-top:1px;font-weight:500}
+
+/* ─── GREETING ─── */
+.greeting{background:var(--white);padding:14px 20px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.greeting-time{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px}
+.greeting-name{font-size:23px;font-weight:900;letter-spacing:-.5px}
+
+/* ─── SPOTIFY STATUS ─── */
+.sp-status{margin:12px 16px 0;flex-shrink:0}
+.sp-connected{background:var(--spotify-lt);border:1px solid rgba(29,185,84,.18);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:9px}
+.sp-disconnected{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:var(--shadow-xs);transition:background .15s}
+.sp-disconnected:active{background:var(--bg)}
+.sp-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sp-txt{flex:1;font-size:12px;font-weight:700}
+.sp-link{font-size:12px;font-weight:700;cursor:pointer}
+.sp-link.on{color:var(--text3)}
+.sp-link.off{color:var(--coral)}
+
+/* ─── SECTION ─── */
+.section{margin-top:16px;flex-shrink:0}
+.section-hdr{display:flex;align-items:center;justify-content:space-between;padding:0 20px 9px}
+.section-title{font-size:14px;font-weight:800;letter-spacing:-.1px}
+.section-more{font-size:13px;font-weight:700;color:var(--coral)}
+
+/* ─── HERO (new set CTA) ─── */
+.hero-btn{margin:12px 16px 0;background:var(--coral);border:none;border-radius:var(--r);padding:15px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 4px 14px rgba(232,98,42,.3);transition:all .15s;width:calc(100% - 32px);text-align:left}
+.hero-btn:active{opacity:.9;transform:scale(.98)}
+.hero-ic{width:36px;height:36px;background:rgba(255,255,255,.22);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hero-ic svg{width:20px;height:20px;fill:white}
+.hero-tx strong{font-size:14px;font-weight:800;color:white;display:block}
+.hero-tx span{font-size:11px;color:rgba(255,255,255,.72);font-weight:500}
+.hero-arr{margin-left:auto;color:rgba(255,255,255,.55);font-size:20px;flex-shrink:0}
+
+/* ─── SET CARDS ─── */
+.set-card{background:var(--white);border-radius:var(--r);margin:0 16px 8px;padding:13px 14px;box-shadow:var(--shadow-sm);cursor:pointer;display:flex;align-items:center;gap:12px;transition:transform .15s,box-shadow .15s}
+.set-card:active{transform:scale(.98);box-shadow:var(--shadow-xs)}
+.set-card-art{width:50px;height:50px;border-radius:11px;object-fit:cover;flex-shrink:0;background:var(--bg)}
+.set-card-art-fb{width:50px;height:50px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+.set-card-body{flex:1;min-width:0}
+.set-card-name{font-size:14px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-card-meta{font-size:11px;color:var(--text2);margin-top:3px;font-weight:500}
+.set-card-preview{font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;flex-shrink:0;letter-spacing:.1px}
+.badge.rr{background:var(--blue-lt);color:var(--blue)}
+.badge.rw{background:var(--teal-lt);color:var(--teal)}
+.badge.fof{background:var(--amber-lt);color:var(--amber)}
+.badge.jj{background:var(--red-lt);color:var(--red)}
+.badge.church{background:var(--coral-lt);color:var(--coral)}
+.badge.sp{background:var(--spotify-lt);color:var(--spotify)}
+.badge.lib{background:var(--green-lt);color:var(--green)}
+
+/* ─── EMPTY STATE ─── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 32px;gap:10px;text-align:center}
+.empty-icon{font-size:44px;opacity:.3;margin-bottom:2px}
+.empty h3{font-size:16px;font-weight:700;color:var(--text2)}
+.empty p{font-size:13px;color:var(--text3);line-height:1.6;font-weight:500}
+
+/* ─── INPUTS ─── */
+.inp-wrap{padding:12px 16px 0;flex-shrink:0}
+.sf-inp{width:100%;background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;font-family:var(--font);font-size:14px;color:var(--text);outline:none;transition:border-color .2s;box-shadow:var(--shadow-xs);font-weight:500}
+.sf-inp::placeholder{color:var(--text3)}
+.sf-inp:focus{border-color:var(--coral)}
+.search-wrap{position:relative}
+.search-wrap .sf-inp{padding-left:38px}
+.search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3)}
+.search-ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+/* ─── AUTOCOMPLETE ─── */
+.ac-drop{background:var(--white);border:1px solid var(--border);border-radius:var(--r-sm);margin-top:4px;overflow:hidden;display:none;box-shadow:var(--shadow-lg);position:absolute;left:0;right:0;z-index:60;max-height:300px;overflow-y:auto}
+.ac-drop.open{display:block}
+.ac-drop::-webkit-scrollbar{display:none}
+.ac-item{padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.ac-item:last-child{border-bottom:none}
+.ac-item:active{background:var(--bg)}
+.ac-art{width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:16px}
+.ac-name{font-size:13px;font-weight:700;letter-spacing:-.1px}
+.ac-sub{font-size:11px;color:var(--text2);margin-top:1px;font-weight:500}
+.ac-ccli{font-size:10px;color:var(--text3);margin-top:1px;font-weight:500}
+.ac-hint{padding:14px;text-align:center;font-size:13px;color:var(--text3);font-weight:500}
+.ac-divider{padding:8px 14px;background:var(--bg);font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px}
+
+/* ─── SONG ROWS (new set) ─── */
+.songs-label{padding:14px 20px 6px;font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;flex-shrink:0}
+.song-row{background:var(--white);margin:0 16px 7px;border-radius:var(--r-sm);padding:10px 12px;display:flex;align-items:center;gap:11px;box-shadow:var(--shadow-sm);border:1.5px solid var(--coral-border)}
+.song-row-art{width:42px;height:42px;border-radius:9px;object-fit:cover;flex-shrink:0;background:var(--bg)}
+.song-row-name{font-size:13px;font-weight:700;letter-spacing:-.1px;line-height:1.3}
+.song-row-ccli{font-size:10px;color:var(--text3);font-weight:500;margin-top:2px}
+.song-row-ccli a{color:var(--blue);text-decoration:none;font-weight:600}
+.song-row-ccli a:hover{text-decoration:underline}
+.song-row-artist{font-size:11px;color:var(--text2);margin-top:1px;font-weight:500}
+.song-row-dur{font-size:11px;color:var(--text3);flex-shrink:0;font-weight:500}
+.song-row-actions{display:flex;gap:2px;flex-shrink:0}
+.row-btn{background:none;border:none;color:var(--text3);font-size:17px;cursor:pointer;padding:3px 5px;border-radius:6px;transition:background .1s;line-height:1}
+.row-btn:active{background:var(--bg);color:var(--text)}
+
+/* ─── BAND CHIPS ─── */
+.band-row{display:flex;gap:7px;padding:10px 16px 0;overflow-x:auto;flex-shrink:0}
+.band-row::-webkit-scrollbar{display:none}
+.band-chip{padding:7px 13px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid transparent;white-space:nowrap;transition:all .15s;flex-shrink:0;letter-spacing:-.1px}
+.band-chip:active{opacity:.8}
+
+/* ─── SELECTION BAR ─── */
+.sel-bar{padding:9px 20px;background:var(--white);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--coral);display:none;flex-shrink:0}
+.sel-bar.show{display:block}
+
+/* ─── FAB ─── */
+.fab{position:fixed;bottom:calc(var(--nav-h) + 12px);right:16px;background:var(--coral);border:none;border-radius:50px;padding:12px 20px;color:white;font-family:var(--font);font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px;box-shadow:0 6px 20px rgba(232,98,42,.42);cursor:pointer;z-index:50;transform:translateY(100px) scale(.85);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+.fab.vis{transform:translateY(0) scale(1);opacity:1}
+.fab:active{transform:scale(.96)!important}
+.fab svg{width:16px;height:16px;fill:white}
+
+/* ─── RESOURCES ─── */
+.upload-zone{background:var(--white);margin:14px 16px;border-radius:var(--r);padding:26px 20px;text-align:center;border:2px dashed var(--border);box-shadow:var(--shadow-xs);cursor:pointer;transition:all .2s;flex-shrink:0}
+.upload-zone:active,.upload-zone.drag{border-color:var(--coral);background:var(--coral-lt)}
+.upload-emo{font-size:38px;margin-bottom:10px}
+.upload-title{font-size:15px;font-weight:800;margin-bottom:4px}
+.upload-sub{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px;font-weight:500}
+.upload-cta{display:inline-block;background:var(--coral);color:white;font-size:12px;font-weight:800;padding:9px 20px;border-radius:50px;box-shadow:0 3px 10px rgba(232,98,42,.25)}
+.lib-stats{margin:0 16px 12px;background:var(--white);border-radius:var(--r);padding:13px 16px;box-shadow:var(--shadow-xs);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.lib-stats-icon{width:36px;height:36px;background:var(--green-lt);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.lib-stats-label{font-size:13px;font-weight:700}
+.lib-stats-sub{font-size:11px;color:var(--text2);margin-top:1px;font-weight:500}
+
+/* ─── SPLIT RESULT CARDS ─── */
+.split-card{background:var(--white);border-radius:var(--r);margin:0 16px 12px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.split-card-hdr{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg)}
+.split-card-name{font-size:13px;font-weight:800;color:var(--text)}
+.split-card-count{font-size:11px;color:var(--text2);margin-top:2px;font-weight:500}
+.split-actions{display:flex;gap:6px}
+.split-btn{background:var(--teal-lt);color:var(--teal);border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font);transition:background .15s}
+.split-btn:active{opacity:.8}
+.split-song-row{padding:10px 15px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.split-song-row:last-child{border-bottom:none}
+.split-song-num{width:20px;height:20px;background:var(--bg);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--text3);flex-shrink:0}
+.split-song-art{width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--bg);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px}
+.split-song-name{font-size:13px;font-weight:700;flex:1;line-height:1.3}
+.split-song-ccli{font-size:10px;color:var(--text3);font-weight:500;margin-top:1px}
+.split-song-ccli a{color:var(--blue);font-weight:600}
+.split-song-artist{font-size:11px;color:var(--text2);font-weight:500;margin-top:1px}
+.add-pill-btn{background:var(--coral-lt);color:var(--coral);border:none;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;font-family:var(--font);transition:background .15s;flex-shrink:0}
+.add-pill-btn:active{opacity:.8}
+.add-pill-btn.done{background:var(--green-lt);color:var(--green)}
+
+/* ─── CALENDAR ─── */
+.cal-month-label{padding:16px 20px 8px;font-size:16px;font-weight:900;letter-spacing:-.3px;flex-shrink:0}
+.cal-gcal-badge{margin:8px 16px 0;background:var(--blue-lt);border:1px solid rgba(37,88,168,.12);border-radius:var(--r);padding:11px 14px;display:flex;align-items:center;gap:9px;flex-shrink:0}
+.cal-week{background:var(--white);border-radius:var(--r);margin:0 16px 8px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.cal-week-hdr{padding:13px 15px;display:flex;align-items:center;gap:12px}
+.cal-date-block{width:44px;height:44px;background:var(--bg);border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.cal-date-block.today{background:var(--coral)}
+.cal-date-day{font-size:18px;font-weight:900;line-height:1;color:var(--text)}
+.cal-date-block.today .cal-date-day,.cal-date-block.today .cal-date-mon{color:white}
+.cal-date-mon{font-size:9px;font-weight:800;color:var(--text3);text-transform:uppercase}
+.cal-week-info{flex:1}
+.cal-week-label{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
+.cal-week-name{font-size:14px;font-weight:800;letter-spacing:-.2px}
+.cal-week-tags{padding:0 15px 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px}
+.cal-week-tags-l{display:flex;flex-wrap:wrap;gap:4px}
+.cal-add-btn{background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-family:var(--font);font-size:11px;font-weight:800;color:var(--text2);cursor:pointer;transition:all .15s;flex-shrink:0}
+.cal-add-btn:active{background:var(--coral-lt);border-color:var(--coral);color:var(--coral)}
+.cal-add-btn.done{background:var(--green-lt);border-color:var(--green);color:var(--green)}
+.cal-add-all-btn{margin:4px 16px 14px;width:calc(100% - 32px);background:var(--coral);color:white;border:none;border-radius:var(--r-sm);padding:13px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(232,98,42,.26);transition:opacity .15s}
+.cal-add-all-btn:active{opacity:.88}
+
+/* ─── MODALS ─── */
+.modal{position:fixed;inset:0;background:rgba(8,8,16,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:200;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .22s}
+.modal.open{opacity:1;pointer-events:all}
+.modal-sheet{background:var(--white);border-radius:22px 22px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1)}
+.modal.open .modal-sheet{transform:translateY(0)}
+.modal-sheet::-webkit-scrollbar{display:none}
+.modal-handle{width:34px;height:4px;background:var(--border);border-radius:2px;margin:11px auto 0}
+/* Set detail modal */
+.modal-art{width:100%;height:170px;object-fit:cover;background:var(--bg)}
+.modal-art-fb{height:110px;display:flex;align-items:center;justify-content:center;font-size:50px}
+.modal-body{padding:16px 20px 0}
+.modal-band-tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;margin-bottom:7px}
+.modal-title{font-size:21px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
+.modal-meta{font-size:12px;color:var(--text2);margin-top:4px;font-weight:500}
+.modal-divider{height:1px;background:var(--border);margin:13px 0}
+.modal-song{padding:10px 20px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--border)}
+.modal-song:last-of-type{border-bottom:none}
+.modal-song-num{font-size:11px;color:var(--text3);font-weight:700;width:16px;text-align:center;flex-shrink:0}
+.modal-song-art{width:38px;height:38px;border-radius:9px;object-fit:cover;background:var(--bg);flex-shrink:0}
+.modal-song-name{font-size:13px;font-weight:700;letter-spacing:-.1px}
+.modal-song-ccli{font-size:10px;color:var(--text3);font-weight:500;margin-top:1px}
+.modal-song-ccli a{color:var(--blue);font-weight:600}
+.modal-song-artist{font-size:11px;color:var(--text2);margin-top:1px;font-weight:500}
+.modal-song-dur{font-size:11px;color:var(--text3);margin-left:auto;flex-shrink:0;font-weight:500}
+.modal-actions{padding:14px 20px;display:flex;gap:8px;flex-shrink:0}
+.m-btn{flex:1;padding:13px;border-radius:var(--r-sm);border:none;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;letter-spacing:-.1px}
+.m-btn:active{opacity:.85}
+.m-btn-coral{background:var(--coral);color:white;box-shadow:0 4px 12px rgba(232,98,42,.3)}
+.m-btn-sp{background:var(--spotify);color:white;box-shadow:0 4px 12px rgba(29,185,84,.28)}
+.m-btn-ghost{background:var(--bg);color:var(--text2)}
+/* Playlist modal */
+.pl-song{padding:11px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.pl-song-art{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--bg);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px}
+.pl-song-name{font-size:13px;font-weight:700;letter-spacing:-.1px}
+.pl-song-artist{font-size:11px;color:var(--text2);margin-top:1px;font-weight:500}
+.pl-song-status{margin-left:auto;flex-shrink:0;font-size:13px}
+.pl-create-bar{padding:13px 20px;border-top:1px solid var(--border);display:flex;gap:8px}
+
+/* ─── BOTTOM NAV ─── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nav-h);background:var(--white);border-top:1px solid var(--border);display:flex;align-items:flex-start;padding:8px 4px 0;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:5px 4px;border-radius:var(--r-sm);transition:background .15s}
+.nav-item:active{background:var(--bg)}
+.nav-item-icon{width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+.nav-item-icon svg{width:22px;height:22px;fill:none;stroke:var(--text3);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.nav-item.on .nav-item-icon svg{stroke:var(--coral)}
+.nav-item-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.1px;transition:color .15s}
+.nav-item.on .nav-item-label{color:var(--coral)}
+.nav-dot{width:4px;height:4px;background:var(--coral);border-radius:50%;display:none}
+.nav-item.on .nav-dot{display:block}
+
+/* ─── TOAST ─── */
+.toast{position:fixed;bottom:calc(var(--nav-h) + 10px);left:50%;transform:translateX(-50%) translateY(10px);background:rgba(15,15,19,.92);color:white;border-radius:50px;padding:9px 18px;font-size:12px;font-weight:700;opacity:0;transition:all .26s;z-index:500;white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin .8s linear infinite}
+.fi{animation:fadeUp .3s ease both}
+.fi1{animation-delay:.04s}.fi2{animation-delay:.08s}.fi3{animation-delay:.12s}.fi4{animation-delay:.16s}
+
+#pdf-inp{display:none}
+
+/* ─── PLAYLIST BADGE ─── */
+.playlist-badge{display:inline-flex;align-items:center;gap:4px;background:var(--spotify-lt);color:var(--spotify);border-radius:20px;padding:3px 9px;font-size:10px;font-weight:800;margin-top:4px}
+</style>
 </head>
 <body>
-    <button id="themeToggle">Toggle Theme</button>
+<div id="app">
 
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="closeModal">&times;</span>
-            <h2>Settings</h2>
-            <!-- Settings form can go here -->
+  <!-- ═══════════ SETS (HOME) ═══════════ -->
+  <div class="screen active" id="sc-sets">
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="logo">
+          <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9-4-9-9-9zm-1 13V8l6 4-6 4z"/></svg></div>
+          <div class="logo-text">Set<em>Flow</em></div>
         </div>
+        <div class="hdr-actions">
+          <button class="icon-btn" id="sp-hdr-btn" onclick="handleSpBtn()" title="Spotify">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.5 17.3c-.2.4-.7.5-1 .3-2.8-1.7-6.4-2.1-10.6-1.1-.4.1-.8-.2-.9-.6-.1-.4.2-.8.6-.9 4.6-1 8.5-.6 11.6 1.3.5.2.5.7.3 1zm1.5-3.3c-.3.5-.8.6-1.3.3-3.2-2-8.1-2.6-11.9-1.4-.5.1-1-.1-1.1-.6-.1-.5.1-1 .6-1.1 4.3-1.3 9.7-.7 13.4 1.6.4.2.6.8.3 1.2zm.1-3.4C15.2 8.4 8.8 8.2 5.2 9.3c-.6.2-1.2-.2-1.4-.7-.2-.6.2-1.2.7-1.4 4.3-1.3 11.3-1 15.7 1.6.5.3.7 1 .4 1.5-.3.6-1 .8-1.6.5z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="om('modal-settings')" title="Settings">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <script>
-        function applyTheme(theme) {
-            document.body.className = theme;
-            localStorage.setItem('theme', theme);
+    <div class="greeting fi">
+      <div class="greeting-time" id="greeting-time">Good morning</div>
+      <div class="greeting-name">Your Sets</div>
+    </div>
+
+    <div id="sp-status-bar" class="fi fi1"></div>
+
+    <button class="hero-btn fi fi2" onclick="sw('add')">
+      <div class="hero-ic"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+      <div class="hero-tx"><strong>Create New Set</strong><span>Build from your library or Spotify</span></div>
+      <div class="hero-arr">›</div>
+    </button>
+
+    <div class="section fi fi3">
+      <div class="section-hdr"><div class="section-title">Recent Sets</div><span class="section-more">See all</span></div>
+      <div id="sets-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ NEW SET ═══════════ -->
+  <div class="screen" id="sc-add">
+    <div class="inner-hdr">
+      <button class="back-btn" onclick="goSets()">‹</button>
+      <div class="inner-hdr-text"><div class="inner-hdr-title">New Set</div><div class="inner-hdr-sub">Search library or Spotify</div></div>
+    </div>
+
+    <!-- Set name -->
+    <div class="inp-wrap"><input class="sf-inp" id="set-nm" placeholder="Set name e.g. Sunday 2nd March"/></div>
+
+    <!-- Search (local first, then Spotify) -->
+    <div class="inp-wrap" style="margin-top:8px;position:relative">
+      <div class="search-wrap">
+        <div class="search-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+        <input class="sf-inp" id="song-srch" placeholder="Search songs in library…" autocomplete="off" oninput="doSearch(this.value)"/>
+        <div class="ac-drop" id="ac"></div>
+      </div>
+    </div>
+
+    <!-- Band picker -->
+    <div class="band-row" id="band-row"></div>
+
+    <!-- Selection status -->
+    <div class="sel-bar" id="sel-bar"></div>
+
+    <!-- Songs in set -->
+    <div class="songs-label">Songs in Set</div>
+    <div id="sel-songs-list">
+      <div class="empty" style="padding:24px 32px"><div class="empty-icon">🎵</div><h3>No songs yet</h3><p>Search your library or Spotify above</p></div>
+    </div>
+
+    <!-- FAB Save -->
+    <button class="fab" id="fab" onclick="saveSet()">
+      <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Set
+    </button>
+  </div>
+
+  <!-- ═══════════ RESOURCES (PDFs) ═══════════ -->
+  <div class="screen" id="sc-pdfs">
+    <div class="inner-hdr">
+      <div style="width:30px;height:30px;background:var(--coral-lt);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">📁</div>
+      <div class="inner-hdr-text" style="flex:1"><div class="inner-hdr-title">Song Library</div><div class="inner-hdr-sub" id="lib-sub">Import PDFs to build your library</div></div>
+    </div>
+
+    <div class="lib-stats" id="lib-stats">
+      <div class="lib-stats-icon">🎵</div>
+      <div><div class="lib-stats-label">0 songs in library</div><div class="lib-stats-sub">Upload a PDF to get started</div></div>
+    </div>
+
+    <!-- ── STEP 1: Upload zone (always visible when no file loaded) ── -->
+    <div id="pdf-upload-step">
+      <div class="upload-zone" id="upload-zone-main" onclick="document.getElementById('pdf-main-inp').click()">
+        <div class="upload-emo">📂</div>
+        <div class="upload-title">Upload a Set PDF</div>
+        <div class="upload-sub">Upload one PDF (or a whole folder) — we'll detect every song, extract title, key and CCLI, then let you save them as separate PDFs and add them to your library.</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px">
+          <div class="upload-cta" onclick="event.stopPropagation();document.getElementById('pdf-main-inp').click()" style="cursor:pointer">📄 Choose PDF</div>
+          <div class="upload-cta" onclick="event.stopPropagation();document.getElementById('folder-main-inp').click()" style="cursor:pointer;background:var(--teal)">📁 Choose Folder</div>
+        </div>
+      </div>
+      <input type="file" id="pdf-main-inp" accept=".pdf,application/pdf" style="display:none" onchange="handlePdfUpload(event)">
+      <input type="file" id="folder-main-inp" webkitdirectory mozdirectory multiple accept=".pdf" style="display:none" onchange="handleFolderUpload(event)">
+    </div>
+
+    <!-- ── STEP 2: Detection results (shown after analysis) ── -->
+    <div id="pdf-detect-step" style="display:none;flex-direction:column;flex:1">
+
+      <!-- progress bar -->
+      <div class="splitter-prog" id="main-prog" style="display:none;margin:8px 16px 0"><div class="splitter-prog-fill" id="main-prog-fill" style="width:0%"></div></div>
+
+      <!-- file info + action bar -->
+      <div id="pdf-file-bar" style="display:none;padding:10px 16px 0;flex-shrink:0">
+        <div style="background:var(--white);border-radius:var(--r-sm);border:1px solid var(--border);padding:10px 13px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-xs)">
+          <div style="width:32px;height:32px;background:var(--coral-lt);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">📄</div>
+          <div style="flex:1;min-width:0">
+            <div id="pdf-file-name" style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+            <div id="pdf-file-meta" style="font-size:11px;color:var(--text2);margin-top:1px;font-weight:500"></div>
+          </div>
+          <button onclick="resetPdfTool()" style="background:none;border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;flex-shrink:0;font-family:var(--font)">✕ New</button>
+        </div>
+      </div>
+
+      <!-- sensitivity bar -->
+      <div id="pdf-sens-bar" style="display:none;padding:10px 16px 4px;flex-shrink:0">
+        <div style="background:var(--white);border-radius:var(--r-sm);border:1px solid var(--border);padding:10px 13px;box-shadow:var(--shadow-xs)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">Detection sensitivity</span>
+            <input type="range" min="1" max="10" value="7" id="pdf-sens-slider" oninput="onPdfSens(this.value)" style="flex:1;accent-color:var(--coral)">
+            <span id="pdf-sens-val" style="font-size:12px;font-weight:800;color:var(--coral);width:14px;text-align:right;flex-shrink:0">7</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:2px;font-weight:600"><span>Fewer songs</span><span>More songs</span></div>
+        </div>
+      </div>
+
+      <!-- detected songs list -->
+      <div id="pdf-songs-list" style="overflow-y:auto;padding-bottom:4px;flex:1"></div>
+
+      <!-- action buttons -->
+      <div id="pdf-actions" style="display:none;padding:10px 16px 14px;gap:8px;display:none;flex-direction:column;flex-shrink:0">
+        <button class="splitter-save-btn" id="pdf-add-lib-btn" onclick="addDetectedToLibrary()" style="background:var(--green)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Add All to Library
+        </button>
+        <button class="splitter-save-btn" id="pdf-split-btn" onclick="splitAndDownload()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save as Individual PDFs
+        </button>
+      </div>
+    </div>
+
+    <!-- previously imported results -->
+    <div id="split-results"></div>
+  </div>
+
+  <!-- ═══════════ CALENDAR ═══════════ -->
+  <div class="screen" id="sc-cal">
+    <div class="inner-hdr">
+      <div style="width:30px;height:30px;background:var(--blue-lt);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">📅</div>
+      <div class="inner-hdr-text" style="flex:1"><div class="inner-hdr-title">Calendar</div><div class="inner-hdr-sub">Rehearsal schedule</div></div>
+      <button class="icon-btn" onclick="showToast('Synced with Google Calendar ✅')">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </div>
+    <div id="cal-body"></div>
+  </div>
+
+  <!-- ═══════════ BOTTOM NAV ═══════════ -->
+  <nav class="bottom-nav">
+    <div class="nav-item on" id="ni-sets" onclick="sw('sets')">
+      <div class="nav-item-icon"><svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></div>
+      <div class="nav-item-label">Sets</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" id="ni-add" onclick="sw('add')">
+      <div class="nav-item-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg></div>
+      <div class="nav-item-label">New Set</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" id="ni-pdfs" onclick="sw('pdfs')">
+      <div class="nav-item-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+      <div class="nav-item-label">PDFs</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" id="ni-cal" onclick="sw('cal')">
+      <div class="nav-item-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <div class="nav-item-label">Calendar</div>
+      <div class="nav-dot"></div>
+    </div>
+  </nav>
+</div>
+
+<!-- ═══════════ SET DETAIL MODAL ═══════════ -->
+<div class="modal" id="modal-set" onclick="cm('modal-set')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="ms-art"></div>
+    <div class="modal-body">
+      <div id="ms-tag" class="modal-band-tag"></div>
+      <div class="modal-title" id="ms-title"></div>
+      <div class="modal-meta" id="ms-meta"></div>
+      <div id="ms-pl-badge"></div>
+    </div>
+    <div class="modal-divider"></div>
+    <div id="ms-songs"></div>
+    <div class="modal-actions">
+      <button class="m-btn m-btn-sp" onclick="openPlaylistModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.5 17.3c-.2.4-.7.5-1 .3-2.8-1.7-6.4-2.1-10.6-1.1-.4.1-.8-.2-.9-.6-.1-.4.2-.8.6-.9 4.6-1 8.5-.6 11.6 1.3.5.2.5.7.3 1zm1.5-3.3c-.3.5-.8.6-1.3.3-3.2-2-8.1-2.6-11.9-1.4-.5.1-1-.1-1.1-.6-.1-.5.1-1 .6-1.1 4.3-1.3 9.7-.7 13.4 1.6.4.2.6.8.3 1.2zm.1-3.4C15.2 8.4 8.8 8.2 5.2 9.3c-.6.2-1.2-.2-1.4-.7-.2-.6.2-1.2.7-1.4 4.3-1.3 11.3-1 15.7 1.6.5.3.7 1 .4 1.5-.3.6-1 .8-1.6.5z"/></svg>
+        Make Playlist
+      </button>
+      <button class="m-btn m-btn-ghost" onclick="cm('modal-set')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PLAYLIST MODAL ═══════════ -->
+<div class="modal" id="modal-pl" onclick="cm('modal-pl')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-body" style="padding-bottom:0">
+      <div class="modal-band-tag" style="background:var(--spotify-lt);color:var(--spotify);display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;margin-bottom:7px">Spotify</div>
+      <div class="modal-title" style="font-size:19px" id="pl-title"></div>
+      <div class="modal-meta" id="pl-meta"></div>
+    </div>
+    <div class="modal-divider"></div>
+    <div id="pl-songs"></div>
+    <div class="pl-create-bar">
+      <button class="m-btn m-btn-sp" id="pl-create-btn" onclick="createPlaylist()" style="flex:2">Create Spotify Playlist</button>
+      <button class="m-btn m-btn-ghost" onclick="cm('modal-pl')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════ SETTINGS MODAL ═══════════ -->
+<div class="modal" id="modal-settings" onclick="cm('modal-settings')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-body" style="padding-bottom:4px">
+      <div class="modal-title" style="font-size:17px;margin-bottom:4px">Settings</div>
+    </div>
+    <div class="modal-divider"></div>
+
+    <div class="settings-row">
+      <div><div class="settings-label">Dark Mode</div><div class="settings-sub">Switch to dark theme</div></div>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="toggle-dark" onchange="applyTheme(this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="sens-row">
+      <div class="settings-label">PDF Song Detection Sensitivity</div>
+      <div class="settings-sub" style="margin-top:2px;margin-bottom:8px">Higher = detects more potential song boundaries (may include false positives)</div>
+      <input type="range" class="sens-slider" id="global-sensitivity" min="1" max="10" value="7" oninput="document.getElementById('sens-val').textContent=this.value;splitterSensitivity=parseInt(this.value)">
+      <div class="sens-labels"><span>Fewer songs</span><span id="sens-val">7</span><span>More songs</span></div>
+    </div>
+
+    <div class="settings-row">
+      <div><div class="settings-label">About</div><div class="settings-sub">SetFlow — built for your worship team</div></div>
+      <span style="font-size:11px;color:var(--text3);font-weight:600">v1.2</span>
+    </div>
+
+    <div style="padding:14px 20px 20px">
+      <button class="m-btn m-btn-ghost" onclick="cm('modal-settings')" style="width:100%">Done</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════
+const SP_CLIENT_ID = 'dbe59a69b5e845708b0987948f398e1b';
+const SP_REDIRECT  = 'https://tom-isnt-all-here.github.io/Setflow/';
+const SP_SCOPES    = 'playlist-modify-public playlist-modify-private';
+const CCLI_BASE    = 'https://songselect.ccli.com/songs/';
+
+const BANDS = {
+  rr:  { label:'Rhythm & Rhyme', cls:'rr',  bg:'#E4EDF8', fg:'#2558A8', icon:'🎸' },
+  rw:  { label:'Raw Worship',    cls:'rw',  bg:'#E2F2EF', fg:'#1A7A68', icon:'🔥' },
+  fof: { label:'Full On Faith',  cls:'fof', bg:'#FBF2DC', fg:'#9A6400', icon:'⛪' },
+  jj:  { label:'Jesus Jam',      cls:'jj',  bg:'#FAE7E7', fg:'#B02A2A', icon:'🎶' },
+};
+const WEEK_ROT = ['rr','rw','fof','jj','fof'];
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let spToken  = null;
+let spUser   = null;
+let sets     = [];       // saved sets
+let library  = [];       // song library from imported PDFs
+let selSongs = [];       // songs selected for current new set
+let selBand  = 'rr';
+let curSet   = null;
+let plTracks = {};       // { songId: spotify track | null }
+let calAdded = {};
+let searchTm = null;
+
+// ─── Persistence helpers ───
+function loadState() {
+  try { sets    = JSON.parse(localStorage.getItem('sf_sets')    || '[]'); } catch(e){ sets=[]; }
+  try { library = JSON.parse(localStorage.getItem('sf_library') || '[]'); } catch(e){ library=[]; }
+  try { calAdded= JSON.parse(localStorage.getItem('sf_cal')     || '{}'); } catch(e){ calAdded={}; }
+}
+function saveSets()    { localStorage.setItem('sf_sets',    JSON.stringify(sets));    }
+function saveLibrary() { localStorage.setItem('sf_library', JSON.stringify(library)); }
+function saveCal()     { localStorage.setItem('sf_cal',     JSON.stringify(calAdded));}
+
+// ═══════════════════════════════════════════════════
+// SPOTIFY PKCE OAUTH
+// ═══════════════════════════════════════════════════
+function b64url(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function generatePKCE() {
+  const verifier  = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  return { verifier, challenge };
+}
+
+async function loginSpotify() {
+  const { verifier, challenge } = await generatePKCE();
+  localStorage.setItem('sp_verifier', verifier);
+  const p = new URLSearchParams({
+    response_type:'code', client_id:SP_CLIENT_ID,
+    scope:SP_SCOPES, redirect_uri:SP_REDIRECT,
+    code_challenge_method:'S256', code_challenge:challenge, state:'sf'
+  });
+  window.location.href = 'https://accounts.spotify.com/authorize?' + p.toString();
+}
+
+async function exchangeCode(code) {
+  const verifier = localStorage.getItem('sp_verifier');
+  if (!verifier) return;
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        grant_type:'authorization_code', code,
+        redirect_uri:SP_REDIRECT, client_id:SP_CLIENT_ID, code_verifier:verifier
+      })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      spToken = data.access_token;
+      localStorage.setItem('sp_token', spToken);
+      if (data.refresh_token) localStorage.setItem('sp_refresh', data.refresh_token);
+      localStorage.removeItem('sp_verifier');
+      await loadSpotifyUser();
+    } else {
+      showToast('Spotify login failed — try again');
+    }
+  } catch(e) { showToast('Network error during Spotify login'); }
+}
+
+async function refreshToken() {
+  const rt = localStorage.getItem('sp_refresh');
+  if (!rt) return false;
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ grant_type:'refresh_token', refresh_token:rt, client_id:SP_CLIENT_ID })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      spToken = data.access_token;
+      localStorage.setItem('sp_token', spToken);
+      return true;
+    }
+  } catch(e){}
+  return false;
+}
+
+async function spFetch(url, opts={}) {
+  if (!spToken) return null;
+  const makeReq = () => fetch(url, {
+    ...opts,
+    headers:{ ...opts.headers, Authorization:`Bearer ${spToken}`, 'Content-Type':'application/json' }
+  });
+  let res = await makeReq();
+  if (res.status === 401) {
+    const ok = await refreshToken();
+    if (ok) res = await makeReq();
+    else { spToken = null; updateSpBar(); return null; }
+  }
+  if (!res.ok) return null;
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('json') ? res.json() : null;
+}
+
+async function loadSpotifyUser() {
+  const data = await spFetch('https://api.spotify.com/v1/me');
+  if (data) { spUser = data; updateSpBar(); }
+}
+
+function disconnectSpotify() {
+  spToken = spUser = null;
+  localStorage.removeItem('sp_token');
+  localStorage.removeItem('sp_refresh');
+  updateSpBar();
+  showToast('Disconnected from Spotify');
+}
+
+function handleSpBtn() {
+  if (spToken) showToast(`Connected: ${spUser?.display_name || 'Spotify'}`);
+  else loginSpotify();
+}
+
+function updateSpBar() {
+  const bar = document.getElementById('sp-status-bar');
+  const btn = document.getElementById('sp-hdr-btn');
+  if (spToken && spUser) {
+    btn.style.color = 'var(--spotify)';
+    bar.innerHTML = `<div class="sp-connected">
+      <div class="sp-dot" style="background:var(--spotify)"></div>
+      <div class="sp-txt">Connected as <strong>${escHTML(spUser.display_name)}</strong></div>
+      <span class="sp-link on" onclick="disconnectSpotify()" style="cursor:pointer">Disconnect</span>
+    </div>`;
+  } else {
+    btn.style.color = '';
+    bar.innerHTML = `<div class="sp-disconnected" onclick="loginSpotify()">
+      <div class="sp-dot" style="background:var(--text3)"></div>
+      <div class="sp-txt">Connect Spotify to search & create playlists</div>
+      <span class="sp-link off">Connect →</span>
+    </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// SPOTIFY API HELPERS
+// ═══════════════════════════════════════════════════
+function ms2str(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
+async function spotifySearch(q, limit=6) {
+  if (!q || !spToken) return [];
+  try {
+    const data = await spFetch(
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}&market=GB`
+    );
+    return data?.tracks?.items || [];
+  } catch(e) { return []; }
+}
+
+async function findExistingPlaylist(name) {
+  if (!spUser) return null;
+  let url = `https://api.spotify.com/v1/users/${spUser.id}/playlists?limit=50`;
+  while (url) {
+    const data = await spFetch(url);
+    if (!data) break;
+    const match = data.items?.find(p => p.name === name);
+    if (match) return match;
+    url = data.next || null;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// PDF EXTRACTION — page-aware (returns array of page objects)
+// ═══════════════════════════════════════════════════
+async function extractPdfPages(file) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const pages = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page    = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const vp      = page.getViewport({ scale: 1 });
+
+    // Group text items by Y (vertical position), collect font size
+    const byY = {};
+    for (const item of content.items) {
+      if (!item.str || !item.str.trim()) continue;
+      const y  = Math.round(vp.height - item.transform[5]); // top-down
+      const sz = Math.abs(item.transform[3]);
+      if (!byY[y]) byY[y] = { parts: [], sz: 0 };
+      byY[y].parts.push(item.str.trim());
+      byY[y].sz = Math.max(byY[y].sz, sz);
+    }
+
+    const sortedYs = Object.keys(byY).map(Number).sort((a, b) => a - b);
+    const lines = sortedYs.map(y => ({
+      text: byY[y].parts.join(' ').trim(),
+      sz:   byY[y].sz,
+      y
+    })).filter(l => l.text.length > 0);
+
+    const allText = lines.map(l => l.text).join('\n');
+
+    pages.push({ pageNum, lines, allText, height: vp.height });
+  }
+
+  return pages;
+}
+
+// ═══════════════════════════════════════════════════
+// SONG PARSER — page-boundary aware
+// Detects song starts by looking for Key: + BPM near top of page.
+// Works with and without CCLI numbers.
+// ═══════════════════════════════════════════════════
+function parsePdfPages(pages) {
+  const RE_KEY  = /^Key\s*[:\s]\s*([A-G][b#]?(?:m(?:aj|in)?)?)\s*$/i;
+  const RE_BPM  = /^\d{2,3}\s*BPM\s*$/i;
+  const RE_TIME = /^Time\s*[:\s]/i;
+  const RE_CCLI = /CCLI\s*(?:Song\s*(?:No\.?|#)?\s*)?:?\s*(\d{5,8})/i;
+  const RE_ARTIST_BY = /^\((?:based on|as published by|as recorded by|original key)/i;
+  const RE_AUTHORS = /^[A-Z][a-z]+(?:\s[A-Z][a-z\.]+)+(?:,\s*[A-Z][a-z]+(?:\s[A-Z][a-z\.]+)*)*$/;
+  const RE_SECTION = /^(?:Verse|Chorus|Bridge|Pre-?Chorus|Intro|Outro|Interlude|Tag|Turnaround|Instrumental|Coda|Ending|Refrain|Post-?Chorus|VERSE|CHORUS|BRIDGE|INTRO|OUTRO|TURNAROUND|ENDING|BRIDGE|TAG)\s*\d*\s*[a-zA-Z]?\s*$/;
+  const RE_CHORD  = /^[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*(?:\s+[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*)*\s*$/;
+  const RE_NOISE  = /For use solely|All rights reserved|www\.ccli|SongSelect|©|\(c\)|Publishing|Thankyou Music|Capitol CMG|sixsteps|Bethel Music|Elevation|Maverick City|SHOUT!/i;
+  const RE_PAGENUM = /^\d{1,3}$/;
+  const RE_REPEAT = /^\|\|?[\s:A-G|]+\|\|?/;
+
+  // Determine if a page is a SONG START page
+  // A song start has: Key: X  AND  BPM  within the first ~40% of the page height
+  function isSongStart(page) {
+    const topLines = page.lines.filter(l => l.y < page.height * 0.45);
+    const topText  = topLines.map(l => l.text);
+    const hasKey   = topText.some(t => RE_KEY.test(t));
+    const hasBPM   = topText.some(t => RE_BPM.test(t));
+    // Key alone is also a strong signal (some sheets lack BPM)
+    return hasKey; // BPM optional — key is the reliable marker
+  }
+
+  // Extract metadata from the top of a song-start page
+  function extractMeta(page) {
+    // Look at top 50% of page
+    const topLines = page.lines.filter(l => l.y < page.height * 0.55);
+
+    let title  = '';
+    let key    = '';
+    let artist = '';
+
+    // Find key first (reliable anchor)
+    for (const l of topLines) {
+      if (!key && RE_KEY.test(l.text)) {
+        key = l.text.match(RE_KEY)[1].trim();
+        break;
+      }
+    }
+
+    // Title = the largest-font non-noise line above the key line,
+    // OR the first clean line if we can't determine font sizes
+    const keyLineY = topLines.find(l => RE_KEY.test(l.text))?.y ?? Infinity;
+    const aboveKey = page.lines.filter(l => l.y < keyLineY);
+
+    // Sort by font size desc to find title
+    const bySize = [...aboveKey].sort((a, b) => b.sz - a.sz);
+
+    for (const l of bySize) {
+      const t = l.text;
+      if (!t || t.length < 2 || t.length > 100) continue;
+      if (RE_NOISE.test(t)) continue;
+      if (RE_CHORD.test(t)) continue;
+      if (RE_SECTION.test(t)) continue;
+      if (RE_PAGENUM.test(t)) continue;
+      if (RE_ARTIST_BY.test(t)) continue;
+      if (RE_BPM.test(t) || RE_TIME.test(t)) continue;
+      if (RE_CCLI.test(t)) continue;
+      if (t.split(/\s+/).length > 10) continue; // too many words = lyric
+      title = t;
+      break;
+    }
+
+    // Fallback: first clean line top-to-bottom if font-size approach failed
+    if (!title) {
+      for (const l of aboveKey) {
+        const t = l.text;
+        if (!t || t.length < 2 || t.length > 100) continue;
+        if (RE_NOISE.test(t) || RE_CHORD.test(t) || RE_SECTION.test(t)) continue;
+        if (RE_PAGENUM.test(t) || RE_ARTIST_BY.test(t)) continue;
+        if (RE_BPM.test(t) || RE_TIME.test(t) || RE_CCLI.test(t)) continue;
+        if (t.split(/\s+/).length > 10) continue;
+        title = t;
+        break;
+      }
+    }
+
+    // Artist from "(based on...)" or author name line
+    for (const l of aboveKey) {
+      if (!artist && RE_ARTIST_BY.test(l.text)) {
+        const m = l.text.match(/by\s+([^|()]+)/i);
+        if (m) artist = m[1].trim().replace(/\s*\|.*$/, '').trim();
+      }
+      if (!artist && RE_AUTHORS.test(l.text) && l.text.length < 120) {
+        artist = l.text;
+      }
+    }
+
+    return { title, key, artist };
+  }
+
+  // Find CCLI for a song block (pages startIdx..endIdx)
+  function findCCLI(songPages) {
+    for (const page of songPages) {
+      const m = page.allText.match(RE_CCLI);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  // ── Main detection pass ──────────────────────────────────
+  const songStartIndices = [];
+  for (let i = 0; i < pages.length; i++) {
+    if (isSongStart(pages[i])) {
+      songStartIndices.push(i);
+    }
+  }
+
+  if (songStartIndices.length === 0) return [];
+
+  const songs = [];
+  for (let si = 0; si < songStartIndices.length; si++) {
+    const startIdx = songStartIndices[si];
+    const endIdx   = si + 1 < songStartIndices.length
+      ? songStartIndices[si + 1] - 1
+      : pages.length - 1;
+
+    const songPages = pages.slice(startIdx, endIdx + 1);
+    const meta      = extractMeta(pages[startIdx]);
+    const ccli      = findCCLI(songPages);
+
+    if (!meta.title) continue;
+
+    songs.push({
+      title:  meta.title,
+      artist: meta.artist,
+      key:    meta.key,
+      ccli,
+      art:    '',
+      uri:    '',
+      dur:    '',
+      startPage: pages[startIdx].pageNum,
+      endPage:   pages[endIdx].pageNum,
+    });
+  }
+
+  return songs;
+}
+
+// ═══════════════════════════════════════════════════
+// LEGACY TEXT FALLBACK (for plain .txt set lists)
+// ═══════════════════════════════════════════════════
+function parseSetText(raw) {
+  if (!raw || typeof raw !== 'string') return [];
+  const RE_CCLI = /CCLI\s*(?:Song\s*(?:No\.?|#|Number)?\s*)?:?\s*(\d{5,8})/i;
+  const lines   = raw.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+  const songs   = [], seen = new Set();
+  const RE_NUMBERED = /^\d+[\.\)]\s+(.+)$/;
+  const RE_DASH     = /^(.+?)\s*[-–—]\s*(.+)$/;
+
+  for (const line of lines) {
+    if (RE_CCLI.test(line)) continue;
+    if (line.length < 3 || line.length > 80) continue;
+    let title = '', artist = '';
+    if (RE_NUMBERED.test(line)) { title = line.match(RE_NUMBERED)[1].trim(); }
+    else if (RE_DASH.test(line) && !line.startsWith('-')) {
+      const m = line.match(RE_DASH);
+      if (m[1].length < 60 && m[2].length < 60) { title = m[1].trim(); artist = m[2].trim(); }
+      else title = line;
+    } else { title = line; }
+    const dk = title.toLowerCase().replace(/\s+/g, '');
+    if (title && !seen.has(dk)) { seen.add(dk); songs.push({ title, artist, ccli: '', key: '', art: '', uri: '', dur: '' }); }
+  }
+  return songs;
+}
+
+
+// ═══════════════════════════════════════════════════
+// UNIFIED PDF TOOL — state
+// ═══════════════════════════════════════════════════
+let pdfToolBytes      = null;   // raw PDF bytes (for splitting)
+let pdfToolPages      = [];     // structured pages from extractPdfPages
+let pdfToolSongs      = [];     // detected songs [{title,key,ccli,startPage,endPage,...}]
+let pdfToolSensitivity = 7;
+let pdfToolFileName   = '';
+let pdfToolIsFolder   = false;  // folder mode = library-import only, no split
+let pdfFolderQueue    = [];     // pending files in folder mode
+
+// ── Drag-and-drop on main upload zone ────────────────
+(function() {
+  const zone = document.getElementById('upload-zone-main');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag');
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+    );
+    if (files.length === 1) handlePdfUpload({ target: { files } });
+    else if (files.length > 1) processFolderFiles(files);
+  });
+})();
+
+// ── Single PDF upload ─────────────────────────────────
+async function handlePdfUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (e.target) e.target.value = '';
+
+  pdfToolIsFolder  = false;
+  pdfToolFileName  = file.name.replace(/\.pdf$/i, '');
+
+  showPdfStep('detect');
+  setPdfStatus('Analysing PDF…');
+  showProg(true);
+
+  try {
+    const buf = await file.arrayBuffer();
+    pdfToolBytes = new Uint8Array(buf);
+    pdfToolPages = await extractPdfPagesFromBuffer(pdfToolBytes, pct => setProgFill(pct));
+    showProg(false);
+
+    pdfToolSongs = detectSongs(pdfToolPages, pdfToolSensitivity);
+
+    document.getElementById('pdf-file-name').textContent = file.name;
+    document.getElementById('pdf-file-meta').textContent =
+      `${pdfToolPages.length} pages · ${pdfToolSongs.length} songs detected`;
+    document.getElementById('pdf-file-bar').style.display  = 'block';
+    document.getElementById('pdf-sens-bar').style.display  = 'block';
+
+    renderPdfSongs();
+  } catch(err) {
+    console.error(err);
+    showToast('Could not read PDF — ' + err.message);
+    resetPdfTool();
+  }
+}
+
+// ── Folder upload ─────────────────────────────────────
+async function handleFolderUpload(e) {
+  const files = Array.from(e.target.files || []).filter(f =>
+    f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+  );
+  if (e.target) e.target.value = '';
+  if (!files.length) { showToast('No PDFs found in folder'); return; }
+  processFolderFiles(files);
+}
+
+async function processFolderFiles(files) {
+  pdfToolIsFolder = true;
+  showPdfStep('detect');
+  showProg(true);
+
+  let totalAdded = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    setPdfStatus(`Processing ${i+1}/${files.length}: ${file.name}`);
+    setProgFill((i / files.length));
+    try {
+      const buf   = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      const pages = await extractPdfPagesFromBuffer(bytes, () => {});
+      const songs = detectSongs(pages, pdfToolSensitivity);
+      if (!songs.length) continue;
+
+      // Spotify enrich + save to library
+      const enriched = await enrichSongs(songs);
+      const added    = saveToLibrary(enriched);
+      totalAdded += added;
+      renderSplitCard(file.name, enriched, added);
+    } catch(err) { console.warn('Skip', file.name, err); }
+  }
+
+  showProg(false);
+  showPdfStep('upload');
+  updateLibStats();
+  showToast(`✅ Folder: ${totalAdded} new songs added`);
+}
+
+// ── Core: extract pages from raw bytes (with progress) ──
+async function extractPdfPagesFromBuffer(bytes, onProgress) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const pdfjs = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+  const total = pdfjs.numPages;
+  const pages = [];
+
+  for (let pageNum = 1; pageNum <= total; pageNum++) {
+    const page    = await pdfjs.getPage(pageNum);
+    const content = await page.getTextContent();
+    const vp      = page.getViewport({ scale: 1 });
+
+    const byY = {};
+    for (const item of content.items) {
+      if (!item.str || !item.str.trim()) continue;
+      const y  = Math.round(vp.height - item.transform[5]);
+      const sz = Math.abs(item.transform[3]);
+      if (!byY[y]) byY[y] = { parts: [], sz: 0 };
+      byY[y].parts.push(item.str.trim());
+      byY[y].sz = Math.max(byY[y].sz, sz);
+    }
+
+    const sortedYs = Object.keys(byY).map(Number).sort((a, b) => a - b);
+    const lines = sortedYs.map(y => ({
+      text: byY[y].parts.join(' ').trim(),
+      sz:   byY[y].sz,
+      y
+    })).filter(l => l.text.length > 0);
+
+    pages.push({ pageNum, lines, allText: lines.map(l => l.text).join('\n'), height: vp.height });
+    onProgress(pageNum / total);
+    await new Promise(r => setTimeout(r, 0)); // yield to UI
+  }
+  return pages;
+}
+
+// Keep extractPdfPages as alias for folder upload handler
+async function extractPdfPages(file) {
+  const buf = await file.arrayBuffer();
+  return extractPdfPagesFromBuffer(new Uint8Array(buf), () => {});
+}
+
+// ── Core: detect songs from pages ────────────────────
+function detectSongs(pages, sensitivity) {
+  const topFraction = 0.25 + (sensitivity - 1) * 0.03;
+  const RE_KEY     = /^Key\s*[:\s]\s*([A-G][b#]?(?:m(?:aj|in)?)?(?:\s*\(.*?\))?)\s*$/i;
+  const RE_CCLI    = /CCLI\s*(?:Song\s*(?:No\.?|#)?\s*)?:?\s*(\d{5,8})/i;
+  const RE_NOISE   = /For use solely|All rights reserved|www\.ccli|SongSelect|©|\(c\)|Publishing|Thankyou Music|Capitol CMG|sixsteps|Bethel Music|Elevation|Maverick City|SHOUT!/i;
+  const RE_CHORD   = /^[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*(?:\s+[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*)*\s*$/;
+  const RE_SECTION = /^(?:Verse|Chorus|Bridge|Pre-?Chorus|Intro|Outro|Interlude|Tag|Turnaround|Instrumental|Coda|Ending|Refrain|Post-?Chorus|VERSE|CHORUS|BRIDGE|INTRO|OUTRO|TURNAROUND|ENDING|TAG)\s*\d*\s*[a-zA-Z]?\s*$/;
+  const RE_PAGENUM = /^\d{1,3}$/;
+  const RE_ARTIST_BY = /^\((?:based on|as published by|as recorded by|original key)/i;
+
+  // Detect start pages: those with Key: X in top fraction
+  const startIndices = [];
+  for (let i = 0; i < pages.length; i++) {
+    const topLines = pages[i].lines.filter(l => l.y < pages[i].height * topFraction);
+    if (topLines.some(l => RE_KEY.test(l.text))) startIndices.push(i);
+  }
+
+  return startIndices.map((startIdx, si) => {
+    const endIdx = si + 1 < startIndices.length ? startIndices[si+1] - 1 : pages.length - 1;
+    const page   = pages[startIdx];
+
+    // Key
+    const keyLine = page.lines.find(l => RE_KEY.test(l.text));
+    const key     = keyLine ? keyLine.text.match(RE_KEY)[1].trim() : '';
+    const keyY    = keyLine?.y ?? Infinity;
+
+    // Title: largest font line above the Key line
+    const aboveKey = page.lines.filter(l => l.y < keyY);
+    let title = '';
+    const bySize = [...aboveKey].sort((a, b) => b.sz - a.sz);
+    for (const l of bySize) {
+      const t = l.text;
+      if (!t || t.length < 2 || t.length > 100) continue;
+      if (RE_NOISE.test(t) || RE_CHORD.test(t) || RE_SECTION.test(t)) continue;
+      if (RE_PAGENUM.test(t) || RE_ARTIST_BY.test(t) || RE_CCLI.test(t)) continue;
+      if (t.split(/\s+/).length > 10) continue;
+      title = t; break;
+    }
+    // Fallback: first clean line top-to-bottom
+    if (!title) {
+      for (const l of aboveKey) {
+        const t = l.text;
+        if (!t || t.length < 2 || t.length > 100) continue;
+        if (RE_NOISE.test(t) || RE_CHORD.test(t) || RE_SECTION.test(t)) continue;
+        if (RE_PAGENUM.test(t) || RE_ARTIST_BY.test(t) || RE_CCLI.test(t)) continue;
+        if (t.split(/\s+/).length > 10) continue;
+        title = t; break;
+      }
+    }
+    if (!title) title = `Song ${si + 1}`;
+
+    // Artist
+    let artist = '';
+    for (const l of aboveKey) {
+      if (RE_ARTIST_BY.test(l.text)) {
+        const m = l.text.match(/by\s+([^|()+]+)/i);
+        if (m) { artist = m[1].trim().replace(/\s*\|.*$/, '').trim(); break; }
+      }
+    }
+    if (!artist) {
+      const RE_AUTHORS = /^[A-Z][a-z]+(?:\s[A-Z][a-z\.]+)+(?:,\s*[A-Z][a-z]+(?:\s[A-Z][a-z\.]+)*)*$/;
+      for (const l of aboveKey) {
+        if (RE_AUTHORS.test(l.text) && l.text.length < 120) { artist = l.text; break; }
+      }
+    }
+
+    // CCLI from any page in block
+    let ccli = '';
+    for (let pi = startIdx; pi <= endIdx; pi++) {
+      const m = pages[pi].allText.match(RE_CCLI);
+      if (m) { ccli = m[1]; break; }
+    }
+
+    return { title, key, ccli, artist, startPage: pages[startIdx].pageNum, endPage: pages[endIdx].pageNum, art: '', uri: '', dur: '' };
+  });
+}
+
+// ── Render detected song cards in the PDFs screen ────
+function renderPdfSongs() {
+  const container = document.getElementById('pdf-songs-list');
+  const actions   = document.getElementById('pdf-actions');
+
+  if (!pdfToolSongs.length) {
+    container.innerHTML = `<div class="empty" style="padding:28px"><div class="empty-icon">🔍</div><h3>No songs detected</h3><p>Try increasing the sensitivity slider above</p></div>`;
+    actions.style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = `<div style="padding:10px 16px 6px;font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px">${pdfToolSongs.length} songs detected</div>` +
+    pdfToolSongs.map((s, i) => {
+      const keyBadge  = s.key  ? `<span class="splitter-key-badge">Key: ${escHTML(s.key)}</span>` : '';
+      const ccliText  = s.ccli ? `CCLI #${s.ccli} · ` : '';
+      const pageRange = s.startPage === s.endPage ? `p.${s.startPage}` : `pp.${s.startPage}–${s.endPage}`;
+      return `<div class="splitter-song-card">
+        <div class="splitter-song-num">${i+1}</div>
+        <div class="splitter-song-info">
+          <div class="splitter-song-name" contenteditable="true" spellcheck="false"
+            onblur="pdfToolSongs[${i}].title=this.textContent.trim()">${escHTML(s.title)}</div>
+          <div class="splitter-song-meta">${keyBadge}${ccliText}${pageRange}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+  // Show action buttons
+  actions.style.display = 'flex';
+
+  // Update file meta
+  document.getElementById('pdf-file-meta').textContent =
+    `${pdfToolPages.length} pages · ${pdfToolSongs.length} songs detected`;
+}
+
+function onPdfSens(v) {
+  pdfToolSensitivity = parseInt(v);
+  document.getElementById('pdf-sens-val').textContent = v;
+  document.getElementById('global-sensitivity').value = v;
+  document.getElementById('sens-val').textContent = v;
+  if (pdfToolPages.length) {
+    pdfToolSongs = detectSongs(pdfToolPages, pdfToolSensitivity);
+    renderPdfSongs();
+  }
+}
+
+// ── Add all detected songs to library ────────────────
+async function addDetectedToLibrary() {
+  const btn = document.getElementById('pdf-add-lib-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin">⚙️</span> Matching on Spotify…`;
+
+  const enriched = await enrichSongs(pdfToolSongs);
+  const added    = saveToLibrary(enriched);
+  updateLibStats();
+  renderSplitCard(pdfToolFileName, enriched, added);
+
+  btn.disabled = false;
+  btn.innerHTML = `✅ ${added} songs added to library`;
+  showToast(`✅ ${added} new songs added`);
+}
+
+// ── Split PDF and download individual files ───────────
+async function splitAndDownload() {
+  if (!pdfToolSongs.length || !pdfToolBytes) return;
+  const btn = document.getElementById('pdf-split-btn');
+  btn.disabled = true;
+
+  try {
+    const srcDoc = await PDFLib.PDFDocument.load(pdfToolBytes);
+    for (let i = 0; i < pdfToolSongs.length; i++) {
+      const song   = pdfToolSongs[i];
+      const newDoc = await PDFLib.PDFDocument.create();
+      const idxs   = [];
+      for (let p = song.startPage; p <= song.endPage; p++) idxs.push(p - 1);
+      const copied = await newDoc.copyPages(srcDoc, idxs);
+      copied.forEach(cp => newDoc.addPage(cp));
+
+      const bytes = await newDoc.save();
+      const blob  = new Blob([bytes], { type: 'application/pdf' });
+      const url   = URL.createObjectURL(blob);
+      const a     = document.createElement('a');
+      a.href      = url;
+      a.download  = `${song.title.replace(/[^a-z0-9 _\-]/gi, '').trim() || ('Song_'+(i+1))}.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+      btn.innerHTML = `<span class="spin">⚙️</span> ${i+1}/${pdfToolSongs.length}…`;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    btn.disabled = false;
+    btn.innerHTML = `✅ Saved ${pdfToolSongs.length} PDFs`;
+    showToast(`✅ ${pdfToolSongs.length} PDFs saved`);
+  } catch(err) {
+    console.error(err);
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save as Individual PDFs`;
+    showToast('Error splitting — ' + err.message);
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────
+async function enrichSongs(songs) {
+  const enriched = [];
+  for (const song of songs) {
+    const s = { ...song };
+    if (spToken) {
+      try {
+        const q       = s.artist ? `${s.title} ${s.artist}` : s.title;
+        const results = await spotifySearch(q, 1);
+        if (results.length) {
+          const t = results[0];
+          s.art   = t.album.images[1]?.url || t.album.images[0]?.url || '';
+          s.uri   = t.uri;
+          s.dur   = ms2str(t.duration_ms);
+          s.spotifyId = t.id;
+          if (!s.artist) s.artist = t.artists[0]?.name || '';
         }
+      } catch(err) { /* non-fatal */ }
+    }
+    enriched.push(s);
+  }
+  return enriched;
+}
 
-        function loadTheme() {
-            const theme = localStorage.getItem('theme') || 'light';
-            applyTheme(theme);
-        }
+function saveToLibrary(songs) {
+  let added = 0;
+  for (const song of songs) {
+    const exists = library.some(s =>
+      s.title.toLowerCase().replace(/\s+/g,'') === song.title.toLowerCase().replace(/\s+/g,'')
+    );
+    if (!exists) {
+      library.push({
+        id: `lib_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        title: song.title, artist: song.artist || '', ccli: song.ccli || '',
+        key: song.key || '', art: song.art || '', uri: song.uri || '', dur: song.dur || '',
+      });
+      added++;
+    }
+  }
+  saveLibrary();
+  return added;
+}
 
-        function om() {
-            const modal = document.getElementById('settingsModal');
-            modal.style.display = 'block';
-        }
+function showPdfStep(step) {
+  document.getElementById('pdf-upload-step').style.display = step === 'upload' ? 'block' : 'none';
+  document.getElementById('pdf-detect-step').style.display = step === 'detect' ? 'flex' : 'none';
+}
 
-        function cm() {
-            const modal = document.getElementById('settingsModal');
-            modal.style.display = 'none';
-        }
+function showProg(show) {
+  document.getElementById('main-prog').style.display = show ? 'block' : 'none';
+}
 
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            const currentTheme = localStorage.getItem('theme');
-            applyTheme(currentTheme === 'light' ? 'dark' : 'light');
-        });
+function setProgFill(pct) {
+  document.getElementById('main-prog-fill').style.width = (pct * 100) + '%';
+}
 
-        document.getElementById('closeModal').addEventListener('click', cm);
-        window.addEventListener('click', event => {
-            const modal = document.getElementById('settingsModal');
-            if (event.target === modal) {
-                cm();
-            }
-        });
+function setPdfStatus(msg) {
+  document.getElementById('pdf-file-meta').textContent = msg;
+}
 
-        loadTheme();
-        // Initialization code for modal
-        // Show modal on page load or based on certain conditions
-    </script>
+function resetPdfTool() {
+  pdfToolBytes = null; pdfToolPages = []; pdfToolSongs = [];
+  pdfToolFileName = ''; pdfToolIsFolder = false;
+  showProg(false);
+  document.getElementById('pdf-file-bar').style.display  = 'none';
+  document.getElementById('pdf-sens-bar').style.display  = 'none';
+  document.getElementById('pdf-songs-list').innerHTML    = '';
+  document.getElementById('pdf-actions').style.display   = 'none';
+  // Reset buttons
+  document.getElementById('pdf-add-lib-btn').disabled   = false;
+  document.getElementById('pdf-add-lib-btn').innerHTML  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Add All to Library`;
+  document.getElementById('pdf-split-btn').disabled     = false;
+  document.getElementById('pdf-split-btn').innerHTML    = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save as Individual PDFs`;
+  showPdfStep('upload');
+}
+
+function restoreUploadZone() {} // no-op, kept for any lingering references
+
+function renderSplitCard(filename, songs, addedCount) {
+  const container = document.getElementById('split-results');
+  const card = document.createElement('div');
+  card.className = 'split-card fi';
+  const shortName = filename.length > 30 ? filename.slice(0,27)+'…' : filename;
+  card.innerHTML = `
+    <div class="split-card-hdr">
+      <div>
+        <div class="split-card-name">📄 ${escHTML(shortName)}</div>
+        <div class="split-card-count">${songs.length} songs · ${addedCount} new to library</div>
+      </div>
+      <div class="split-actions">
+        <button class="split-btn" onclick="addAllToSet(${JSON.stringify(songs).split('"').join('&quot;')})">Add All to Set</button>
+      </div>
+    </div>
+    ${songs.map((s, i) => {
+      const keyHtml  = s.key  ? `<span style="background:var(--amber-lt);color:var(--amber);border-radius:20px;padding:2px 7px;font-size:10px;font-weight:800;margin-right:4px">Key: ${escHTML(s.key)}</span>` : '';
+      const ccliHtml = s.ccli
+        ? `<div class="split-song-ccli">${keyHtml}CCLI <a href="${CCLI_BASE}${s.ccli}" target="_blank" onclick="event.stopPropagation()">#${s.ccli}</a></div>`
+        : (keyHtml ? `<div class="split-song-ccli">${keyHtml}</div>` : '');
+      const artHtml  = s.art
+        ? `<img class="split-song-art" src="${escHTML(s.art)}" onerror="this.innerHTML='🎵';this.style.fontSize='16px'">`
+        : `<div class="split-song-art">🎵</div>`;
+      return `<div class="split-song-row">
+        <div class="split-song-num">${i+1}</div>
+        ${artHtml}
+        <div style="flex:1;min-width:0">
+          <div class="split-song-name">${escHTML(s.title)}</div>
+          ${ccliHtml}
+          ${s.artist ? `<div class="split-song-artist">${escHTML(s.artist)}</div>` : ''}
+        </div>
+        ${s.dur ? `<div style="font-size:10px;color:var(--text3);font-weight:500;flex-shrink:0">${s.dur}</div>` : ''}
+        <button class="add-pill-btn" onclick="addLibSongToSet('${escAttr(s.title)}','${escAttr(s.artist)}','${escAttr(s.ccli)}','${escAttr(s.art)}','${escAttr(s.uri)}','${escAttr(s.dur)}',this)">＋ Add</button>
+      </div>`;
+    }).join('')}`;
+  container.insertBefore(card, container.firstChild);
+}
+
+// ═══════════════════════════════════════════════════
+// BOOT
+
+// ═══════════════════════════════════════════════════
+(async function boot() {
+  loadTheme();
+  loadState();
+  setGreeting();
+  updateLibStats();
+
+  // Handle Spotify OAuth callback
+  const params = new URLSearchParams(window.location.search);
+  const code   = params.get('code');
+  const state  = params.get('state');
+  if (code && state === 'sf') {
+    window.history.replaceState({}, '', window.location.pathname);
+    await exchangeCode(code);
+  } else {
+    const stored = localStorage.getItem('sp_token');
+    if (stored) {
+      spToken = stored;
+      await loadSpotifyUser();
+    }
+  }
+  updateSpBar();
+  renderSets();
+})();
+</script>
 </body>
 </html>
