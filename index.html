@@ -1,1 +1,60 @@
-<!-- Add updated modal control functions and settings modal functionality here -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Page</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <button id="themeToggle">Toggle Theme</button>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeModal">&times;</span>
+            <h2>Settings</h2>
+            <!-- Settings form can go here -->
+        </div>
+    </div>
+
+    <script>
+        function applyTheme(theme) {
+            document.body.className = theme;
+            localStorage.setItem('theme', theme);
+        }
+
+        function loadTheme() {
+            const theme = localStorage.getItem('theme') || 'light';
+            applyTheme(theme);
+        }
+
+        function om() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'block';
+        }
+
+        function cm() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'none';
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const currentTheme = localStorage.getItem('theme');
+            applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+        });
+
+        document.getElementById('closeModal').addEventListener('click', cm);
+        window.addEventListener('click', event => {
+            const modal = document.getElementById('settingsModal');
+            if (event.target === modal) {
+                cm();
+            }
+        });
+
+        loadTheme();
+        // Initialization code for modal
+        // Show modal on page load or based on certain conditions
+    </script>
+</body>
+</html>
