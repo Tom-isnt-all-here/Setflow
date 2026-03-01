@@ -462,29 +462,76 @@ a{color:inherit;text-decoration:none}
   <div class="screen" id="sc-pdfs">
     <div class="inner-hdr">
       <div style="width:30px;height:30px;background:var(--coral-lt);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">📁</div>
-      <div class="inner-hdr-text" style="flex:1"><div class="inner-hdr-title">Song Library</div><div class="inner-hdr-sub">Upload PDFs to extract songs</div></div>
-      <button class="icon-btn" onclick="om('modal-splitter')" title="PDF Splitter" style="background:var(--coral-lt);color:var(--coral)">
-        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-      </button>
+      <div class="inner-hdr-text" style="flex:1"><div class="inner-hdr-title">Song Library</div><div class="inner-hdr-sub" id="lib-sub">Import PDFs to build your library</div></div>
     </div>
 
     <div class="lib-stats" id="lib-stats">
       <div class="lib-stats-icon">🎵</div>
-      <div><div class="lib-stats-label">0 songs in library</div><div class="lib-stats-sub">Import sets to build your library</div></div>
+      <div><div class="lib-stats-label">0 songs in library</div><div class="lib-stats-sub">Upload a PDF to get started</div></div>
     </div>
 
-    <div class="upload-zone" id="upload-zone-main">
-      <div class="upload-emo">📄</div>
-      <div class="upload-title">Import Songs</div>
-      <div class="upload-sub">Upload a SongSelect PDF or a folder of PDFs. We'll extract song titles, keys and CCLI numbers automatically. <strong>Note:</strong> PDFs must have a text layer (not scanned/image-only).</div>
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-        <div class="upload-cta" onclick="document.getElementById('pdf-inp').click()" style="cursor:pointer">📄 Choose PDF</div>
-        <div class="upload-cta" onclick="document.getElementById('folder-inp').click()" style="cursor:pointer;background:var(--teal)">📁 Choose Folder</div>
+    <!-- ── STEP 1: Upload zone (always visible when no file loaded) ── -->
+    <div id="pdf-upload-step">
+      <div class="upload-zone" id="upload-zone-main" onclick="document.getElementById('pdf-main-inp').click()">
+        <div class="upload-emo">📂</div>
+        <div class="upload-title">Upload a Set PDF</div>
+        <div class="upload-sub">Upload one PDF (or a whole folder) — we'll detect every song, extract title, key and CCLI, then let you save them as separate PDFs and add them to your library.</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px">
+          <div class="upload-cta" onclick="event.stopPropagation();document.getElementById('pdf-main-inp').click()" style="cursor:pointer">📄 Choose PDF</div>
+          <div class="upload-cta" onclick="event.stopPropagation();document.getElementById('folder-main-inp').click()" style="cursor:pointer;background:var(--teal)">📁 Choose Folder</div>
+        </div>
+      </div>
+      <input type="file" id="pdf-main-inp" accept=".pdf,application/pdf" style="display:none" onchange="handlePdfUpload(event)">
+      <input type="file" id="folder-main-inp" webkitdirectory mozdirectory multiple accept=".pdf" style="display:none" onchange="handleFolderUpload(event)">
+    </div>
+
+    <!-- ── STEP 2: Detection results (shown after analysis) ── -->
+    <div id="pdf-detect-step" style="display:none;flex-direction:column;flex:1">
+
+      <!-- progress bar -->
+      <div class="splitter-prog" id="main-prog" style="display:none;margin:8px 16px 0"><div class="splitter-prog-fill" id="main-prog-fill" style="width:0%"></div></div>
+
+      <!-- file info + action bar -->
+      <div id="pdf-file-bar" style="display:none;padding:10px 16px 0;flex-shrink:0">
+        <div style="background:var(--white);border-radius:var(--r-sm);border:1px solid var(--border);padding:10px 13px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-xs)">
+          <div style="width:32px;height:32px;background:var(--coral-lt);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">📄</div>
+          <div style="flex:1;min-width:0">
+            <div id="pdf-file-name" style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+            <div id="pdf-file-meta" style="font-size:11px;color:var(--text2);margin-top:1px;font-weight:500"></div>
+          </div>
+          <button onclick="resetPdfTool()" style="background:none;border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;flex-shrink:0;font-family:var(--font)">✕ New</button>
+        </div>
+      </div>
+
+      <!-- sensitivity bar -->
+      <div id="pdf-sens-bar" style="display:none;padding:10px 16px 4px;flex-shrink:0">
+        <div style="background:var(--white);border-radius:var(--r-sm);border:1px solid var(--border);padding:10px 13px;box-shadow:var(--shadow-xs)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">Detection sensitivity</span>
+            <input type="range" min="1" max="10" value="7" id="pdf-sens-slider" oninput="onPdfSens(this.value)" style="flex:1;accent-color:var(--coral)">
+            <span id="pdf-sens-val" style="font-size:12px;font-weight:800;color:var(--coral);width:14px;text-align:right;flex-shrink:0">7</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:2px;font-weight:600"><span>Fewer songs</span><span>More songs</span></div>
+        </div>
+      </div>
+
+      <!-- detected songs list -->
+      <div id="pdf-songs-list" style="overflow-y:auto;padding-bottom:4px;flex:1"></div>
+
+      <!-- action buttons -->
+      <div id="pdf-actions" style="display:none;padding:10px 16px 14px;gap:8px;display:none;flex-direction:column;flex-shrink:0">
+        <button class="splitter-save-btn" id="pdf-add-lib-btn" onclick="addDetectedToLibrary()" style="background:var(--green)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Add All to Library
+        </button>
+        <button class="splitter-save-btn" id="pdf-split-btn" onclick="splitAndDownload()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save as Individual PDFs
+        </button>
       </div>
     </div>
-    <input type="file" id="pdf-inp" accept=".pdf,.txt,.text,application/pdf,text/plain" onchange="handleUpload(event)">
-    <input type="file" id="folder-inp" webkitdirectory mozdirectory multiple accept=".pdf" onchange="handleFolderUpload(event)" style="display:none">
 
+    <!-- previously imported results -->
     <div id="split-results"></div>
   </div>
 
@@ -604,49 +651,7 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
-<!-- ═══════════ PDF SPLITTER MODAL ═══════════ -->
-<div class="modal" id="modal-splitter" onclick="cm('modal-splitter')">
-  <div class="modal-sheet" onclick="event.stopPropagation()" style="max-height:92vh">
-    <div class="modal-handle"></div>
-    <div class="modal-body" style="padding-bottom:4px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="modal-title" style="font-size:17px">PDF Splitter</div>
-        <button class="icon-btn" onclick="resetSplitter()" title="New file" style="font-size:11px;font-weight:700;color:var(--text2);padding:6px 10px;border-radius:20px;border:1px solid var(--border);background:var(--bg)">✕ Reset</button>
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin-top:3px;font-weight:500">Split a multi-song PDF into individual song files</div>
-    </div>
-    <div class="modal-divider"></div>
 
-    <!-- Sensitivity bar (shown when songs detected) -->
-    <div class="modal-sens-bar" id="splitter-sens-bar" style="display:none">
-      <label>Sensitivity</label>
-      <input type="range" min="1" max="10" value="7" id="splitter-sens-slider" oninput="onSplitterSens(this.value)">
-      <span id="splitter-sens-val">7</span>
-    </div>
-
-    <!-- Drop zone -->
-    <div class="splitter-drop" id="splitter-drop" onclick="document.getElementById('splitter-file-inp').click()">
-      <div class="splitter-drop-emo">✂️</div>
-      <div class="splitter-drop-title">Upload a PDF to split</div>
-      <div class="splitter-drop-sub">One PDF with multiple songs — we'll detect where each song starts and let you save them individually</div>
-    </div>
-    <input type="file" id="splitter-file-inp" accept=".pdf,application/pdf" style="display:none" onchange="loadSplitterFile(event)">
-
-    <!-- Progress bar -->
-    <div class="splitter-prog" id="splitter-prog" style="display:none"><div class="splitter-prog-fill" id="splitter-prog-fill" style="width:0%"></div></div>
-
-    <!-- Detected songs list -->
-    <div id="splitter-songs" style="overflow-y:auto;max-height:340px;padding-bottom:4px"></div>
-
-    <!-- Save button -->
-    <div id="splitter-save-wrap" style="display:none">
-      <button class="splitter-save-btn" id="splitter-save-btn" onclick="splitAndSave()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Save Individual Songs
-      </button>
-    </div>
-  </div>
-</div>
 
 <script>
 'use strict';
@@ -655,7 +660,7 @@ a{color:inherit;text-decoration:none}
 // CONFIG
 // ═══════════════════════════════════════════════════
 const SP_CLIENT_ID = 'dbe59a69b5e845708b0987948f398e1b';
-const SP_REDIRECT  = 'https://tom-isnt-all-here.github.io/setflow/';
+const SP_REDIRECT  = 'https://tom-isnt-all-here.github.io/Setflow/';
 const SP_SCOPES    = 'playlist-modify-public playlist-modify-private';
 const CCLI_BASE    = 'https://songselect.ccli.com/songs/';
 
@@ -1061,186 +1066,419 @@ function parseSetText(raw) {
 }
 
 
-async function handleUpload(e) {
+// ═══════════════════════════════════════════════════
+// UNIFIED PDF TOOL — state
+// ═══════════════════════════════════════════════════
+let pdfToolBytes      = null;   // raw PDF bytes (for splitting)
+let pdfToolPages      = [];     // structured pages from extractPdfPages
+let pdfToolSongs      = [];     // detected songs [{title,key,ccli,startPage,endPage,...}]
+let pdfToolSensitivity = 7;
+let pdfToolFileName   = '';
+let pdfToolIsFolder   = false;  // folder mode = library-import only, no split
+let pdfFolderQueue    = [];     // pending files in folder mode
+
+// ── Drag-and-drop on main upload zone ────────────────
+(function() {
+  const zone = document.getElementById('upload-zone-main');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag');
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+    );
+    if (files.length === 1) handlePdfUpload({ target: { files } });
+    else if (files.length > 1) processFolderFiles(files);
+  });
+})();
+
+// ── Single PDF upload ─────────────────────────────────
+async function handlePdfUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-  e.target.value = '';
+  if (e.target) e.target.value = '';
 
-  const zone = document.querySelector('.upload-zone');
-  zone.innerHTML = `<div class="upload-emo"><span class="spin">⚙️</span></div><div class="upload-title">Reading file…</div><div class="upload-sub">${escHTML(file.name)}</div>`;
+  pdfToolIsFolder  = false;
+  pdfToolFileName  = file.name.replace(/\.pdf$/i, '');
 
-  const isPDF = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
-  let parsed = [];
+  showPdfStep('detect');
+  setPdfStatus('Analysing PDF…');
+  showProg(true);
 
   try {
-    if (isPDF) {
-      zone.innerHTML = `<div class="upload-emo"><span class="spin">⚙️</span></div><div class="upload-title">Analysing PDF…</div><div class="upload-sub">${escHTML(file.name)}</div>`;
-      const pages = await extractPdfPages(file);
-      parsed = parsePdfPages(pages);
-    } else {
-      const rawText = await file.text();
-      parsed = parseSetText(rawText);
-    }
+    const buf = await file.arrayBuffer();
+    pdfToolBytes = new Uint8Array(buf);
+    pdfToolPages = await extractPdfPagesFromBuffer(pdfToolBytes, pct => setProgFill(pct));
+    showProg(false);
+
+    pdfToolSongs = detectSongs(pdfToolPages, pdfToolSensitivity);
+
+    document.getElementById('pdf-file-name').textContent = file.name;
+    document.getElementById('pdf-file-meta').textContent =
+      `${pdfToolPages.length} pages · ${pdfToolSongs.length} songs detected`;
+    document.getElementById('pdf-file-bar').style.display  = 'block';
+    document.getElementById('pdf-sens-bar').style.display  = 'block';
+
+    renderPdfSongs();
   } catch(err) {
-    console.error('File read error:', err);
-    showToast('Could not read file — try a .txt version if PDF is scanned');
-    restoreUploadZone();
+    console.error(err);
+    showToast('Could not read PDF — ' + err.message);
+    resetPdfTool();
+  }
+}
+
+// ── Folder upload ─────────────────────────────────────
+async function handleFolderUpload(e) {
+  const files = Array.from(e.target.files || []).filter(f =>
+    f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+  );
+  if (e.target) e.target.value = '';
+  if (!files.length) { showToast('No PDFs found in folder'); return; }
+  processFolderFiles(files);
+}
+
+async function processFolderFiles(files) {
+  pdfToolIsFolder = true;
+  showPdfStep('detect');
+  showProg(true);
+
+  let totalAdded = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    setPdfStatus(`Processing ${i+1}/${files.length}: ${file.name}`);
+    setProgFill((i / files.length));
+    try {
+      const buf   = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      const pages = await extractPdfPagesFromBuffer(bytes, () => {});
+      const songs = detectSongs(pages, pdfToolSensitivity);
+      if (!songs.length) continue;
+
+      // Spotify enrich + save to library
+      const enriched = await enrichSongs(songs);
+      const added    = saveToLibrary(enriched);
+      totalAdded += added;
+      renderSplitCard(file.name, enriched, added);
+    } catch(err) { console.warn('Skip', file.name, err); }
+  }
+
+  showProg(false);
+  showPdfStep('upload');
+  updateLibStats();
+  showToast(`✅ Folder: ${totalAdded} new songs added`);
+}
+
+// ── Core: extract pages from raw bytes (with progress) ──
+async function extractPdfPagesFromBuffer(bytes, onProgress) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const pdfjs = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+  const total = pdfjs.numPages;
+  const pages = [];
+
+  for (let pageNum = 1; pageNum <= total; pageNum++) {
+    const page    = await pdfjs.getPage(pageNum);
+    const content = await page.getTextContent();
+    const vp      = page.getViewport({ scale: 1 });
+
+    const byY = {};
+    for (const item of content.items) {
+      if (!item.str || !item.str.trim()) continue;
+      const y  = Math.round(vp.height - item.transform[5]);
+      const sz = Math.abs(item.transform[3]);
+      if (!byY[y]) byY[y] = { parts: [], sz: 0 };
+      byY[y].parts.push(item.str.trim());
+      byY[y].sz = Math.max(byY[y].sz, sz);
+    }
+
+    const sortedYs = Object.keys(byY).map(Number).sort((a, b) => a - b);
+    const lines = sortedYs.map(y => ({
+      text: byY[y].parts.join(' ').trim(),
+      sz:   byY[y].sz,
+      y
+    })).filter(l => l.text.length > 0);
+
+    pages.push({ pageNum, lines, allText: lines.map(l => l.text).join('\n'), height: vp.height });
+    onProgress(pageNum / total);
+    await new Promise(r => setTimeout(r, 0)); // yield to UI
+  }
+  return pages;
+}
+
+// Keep extractPdfPages as alias for folder upload handler
+async function extractPdfPages(file) {
+  const buf = await file.arrayBuffer();
+  return extractPdfPagesFromBuffer(new Uint8Array(buf), () => {});
+}
+
+// ── Core: detect songs from pages ────────────────────
+function detectSongs(pages, sensitivity) {
+  const topFraction = 0.25 + (sensitivity - 1) * 0.03;
+  const RE_KEY     = /^Key\s*[:\s]\s*([A-G][b#]?(?:m(?:aj|in)?)?(?:\s*\(.*?\))?)\s*$/i;
+  const RE_CCLI    = /CCLI\s*(?:Song\s*(?:No\.?|#)?\s*)?:?\s*(\d{5,8})/i;
+  const RE_NOISE   = /For use solely|All rights reserved|www\.ccli|SongSelect|©|\(c\)|Publishing|Thankyou Music|Capitol CMG|sixsteps|Bethel Music|Elevation|Maverick City|SHOUT!/i;
+  const RE_CHORD   = /^[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*(?:\s+[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*)*\s*$/;
+  const RE_SECTION = /^(?:Verse|Chorus|Bridge|Pre-?Chorus|Intro|Outro|Interlude|Tag|Turnaround|Instrumental|Coda|Ending|Refrain|Post-?Chorus|VERSE|CHORUS|BRIDGE|INTRO|OUTRO|TURNAROUND|ENDING|TAG)\s*\d*\s*[a-zA-Z]?\s*$/;
+  const RE_PAGENUM = /^\d{1,3}$/;
+  const RE_ARTIST_BY = /^\((?:based on|as published by|as recorded by|original key)/i;
+
+  // Detect start pages: those with Key: X in top fraction
+  const startIndices = [];
+  for (let i = 0; i < pages.length; i++) {
+    const topLines = pages[i].lines.filter(l => l.y < pages[i].height * topFraction);
+    if (topLines.some(l => RE_KEY.test(l.text))) startIndices.push(i);
+  }
+
+  return startIndices.map((startIdx, si) => {
+    const endIdx = si + 1 < startIndices.length ? startIndices[si+1] - 1 : pages.length - 1;
+    const page   = pages[startIdx];
+
+    // Key
+    const keyLine = page.lines.find(l => RE_KEY.test(l.text));
+    const key     = keyLine ? keyLine.text.match(RE_KEY)[1].trim() : '';
+    const keyY    = keyLine?.y ?? Infinity;
+
+    // Title: largest font line above the Key line
+    const aboveKey = page.lines.filter(l => l.y < keyY);
+    let title = '';
+    const bySize = [...aboveKey].sort((a, b) => b.sz - a.sz);
+    for (const l of bySize) {
+      const t = l.text;
+      if (!t || t.length < 2 || t.length > 100) continue;
+      if (RE_NOISE.test(t) || RE_CHORD.test(t) || RE_SECTION.test(t)) continue;
+      if (RE_PAGENUM.test(t) || RE_ARTIST_BY.test(t) || RE_CCLI.test(t)) continue;
+      if (t.split(/\s+/).length > 10) continue;
+      title = t; break;
+    }
+    // Fallback: first clean line top-to-bottom
+    if (!title) {
+      for (const l of aboveKey) {
+        const t = l.text;
+        if (!t || t.length < 2 || t.length > 100) continue;
+        if (RE_NOISE.test(t) || RE_CHORD.test(t) || RE_SECTION.test(t)) continue;
+        if (RE_PAGENUM.test(t) || RE_ARTIST_BY.test(t) || RE_CCLI.test(t)) continue;
+        if (t.split(/\s+/).length > 10) continue;
+        title = t; break;
+      }
+    }
+    if (!title) title = `Song ${si + 1}`;
+
+    // Artist
+    let artist = '';
+    for (const l of aboveKey) {
+      if (RE_ARTIST_BY.test(l.text)) {
+        const m = l.text.match(/by\s+([^|()+]+)/i);
+        if (m) { artist = m[1].trim().replace(/\s*\|.*$/, '').trim(); break; }
+      }
+    }
+    if (!artist) {
+      const RE_AUTHORS = /^[A-Z][a-z]+(?:\s[A-Z][a-z\.]+)+(?:,\s*[A-Z][a-z]+(?:\s[A-Z][a-z\.]+)*)*$/;
+      for (const l of aboveKey) {
+        if (RE_AUTHORS.test(l.text) && l.text.length < 120) { artist = l.text; break; }
+      }
+    }
+
+    // CCLI from any page in block
+    let ccli = '';
+    for (let pi = startIdx; pi <= endIdx; pi++) {
+      const m = pages[pi].allText.match(RE_CCLI);
+      if (m) { ccli = m[1]; break; }
+    }
+
+    return { title, key, ccli, artist, startPage: pages[startIdx].pageNum, endPage: pages[endIdx].pageNum, art: '', uri: '', dur: '' };
+  });
+}
+
+// ── Render detected song cards in the PDFs screen ────
+function renderPdfSongs() {
+  const container = document.getElementById('pdf-songs-list');
+  const actions   = document.getElementById('pdf-actions');
+
+  if (!pdfToolSongs.length) {
+    container.innerHTML = `<div class="empty" style="padding:28px"><div class="empty-icon">🔍</div><h3>No songs detected</h3><p>Try increasing the sensitivity slider above</p></div>`;
+    actions.style.display = 'none';
     return;
   }
 
-  if (!parsed || parsed.length === 0) {
-    showToast('No songs detected — PDF may be image-only or unrecognised format');
-    restoreUploadZone();
-    return;
+  container.innerHTML = `<div style="padding:10px 16px 6px;font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px">${pdfToolSongs.length} songs detected</div>` +
+    pdfToolSongs.map((s, i) => {
+      const keyBadge  = s.key  ? `<span class="splitter-key-badge">Key: ${escHTML(s.key)}</span>` : '';
+      const ccliText  = s.ccli ? `CCLI #${s.ccli} · ` : '';
+      const pageRange = s.startPage === s.endPage ? `p.${s.startPage}` : `pp.${s.startPage}–${s.endPage}`;
+      return `<div class="splitter-song-card">
+        <div class="splitter-song-num">${i+1}</div>
+        <div class="splitter-song-info">
+          <div class="splitter-song-name" contenteditable="true" spellcheck="false"
+            onblur="pdfToolSongs[${i}].title=this.textContent.trim()">${escHTML(s.title)}</div>
+          <div class="splitter-song-meta">${keyBadge}${ccliText}${pageRange}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+  // Show action buttons
+  actions.style.display = 'flex';
+
+  // Update file meta
+  document.getElementById('pdf-file-meta').textContent =
+    `${pdfToolPages.length} pages · ${pdfToolSongs.length} songs detected`;
+}
+
+function onPdfSens(v) {
+  pdfToolSensitivity = parseInt(v);
+  document.getElementById('pdf-sens-val').textContent = v;
+  document.getElementById('global-sensitivity').value = v;
+  document.getElementById('sens-val').textContent = v;
+  if (pdfToolPages.length) {
+    pdfToolSongs = detectSongs(pdfToolPages, pdfToolSensitivity);
+    renderPdfSongs();
   }
+}
 
-  zone.innerHTML = `<div class="upload-emo"><span class="spin">🎵</span></div><div class="upload-title">Matching ${parsed.length} songs on Spotify…</div><div class="upload-sub">This may take a moment</div>`;
+// ── Add all detected songs to library ────────────────
+async function addDetectedToLibrary() {
+  const btn = document.getElementById('pdf-add-lib-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin">⚙️</span> Matching on Spotify…`;
 
-  // Enrich with Spotify data if connected
+  const enriched = await enrichSongs(pdfToolSongs);
+  const added    = saveToLibrary(enriched);
+  updateLibStats();
+  renderSplitCard(pdfToolFileName, enriched, added);
+
+  btn.disabled = false;
+  btn.innerHTML = `✅ ${added} songs added to library`;
+  showToast(`✅ ${added} new songs added`);
+}
+
+// ── Split PDF and download individual files ───────────
+async function splitAndDownload() {
+  if (!pdfToolSongs.length || !pdfToolBytes) return;
+  const btn = document.getElementById('pdf-split-btn');
+  btn.disabled = true;
+
+  try {
+    const srcDoc = await PDFLib.PDFDocument.load(pdfToolBytes);
+    for (let i = 0; i < pdfToolSongs.length; i++) {
+      const song   = pdfToolSongs[i];
+      const newDoc = await PDFLib.PDFDocument.create();
+      const idxs   = [];
+      for (let p = song.startPage; p <= song.endPage; p++) idxs.push(p - 1);
+      const copied = await newDoc.copyPages(srcDoc, idxs);
+      copied.forEach(cp => newDoc.addPage(cp));
+
+      const bytes = await newDoc.save();
+      const blob  = new Blob([bytes], { type: 'application/pdf' });
+      const url   = URL.createObjectURL(blob);
+      const a     = document.createElement('a');
+      a.href      = url;
+      a.download  = `${song.title.replace(/[^a-z0-9 _\-]/gi, '').trim() || ('Song_'+(i+1))}.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+      btn.innerHTML = `<span class="spin">⚙️</span> ${i+1}/${pdfToolSongs.length}…`;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    btn.disabled = false;
+    btn.innerHTML = `✅ Saved ${pdfToolSongs.length} PDFs`;
+    showToast(`✅ ${pdfToolSongs.length} PDFs saved`);
+  } catch(err) {
+    console.error(err);
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save as Individual PDFs`;
+    showToast('Error splitting — ' + err.message);
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────
+async function enrichSongs(songs) {
   const enriched = [];
-  for (const song of parsed) {
+  for (const song of songs) {
+    const s = { ...song };
     if (spToken) {
       try {
-        const q = song.artist ? `${song.title} ${song.artist}` : song.title;
+        const q       = s.artist ? `${s.title} ${s.artist}` : s.title;
         const results = await spotifySearch(q, 1);
         if (results.length) {
           const t = results[0];
-          song.art    = t.album.images[1]?.url || t.album.images[0]?.url || '';
-          song.uri    = t.uri;
-          song.dur    = ms2str(t.duration_ms);
-          song.spotifyId = t.id;
-          if (!song.artist) song.artist = t.artists[0]?.name || '';
-          if (!song.title)  song.title  = t.name;
+          s.art   = t.album.images[1]?.url || t.album.images[0]?.url || '';
+          s.uri   = t.uri;
+          s.dur   = ms2str(t.duration_ms);
+          s.spotifyId = t.id;
+          if (!s.artist) s.artist = t.artists[0]?.name || '';
         }
       } catch(err) { /* non-fatal */ }
     }
-    enriched.push(song);
+    enriched.push(s);
   }
+  return enriched;
+}
 
-  // Save new songs to library (no duplicates)
-  let addedCount = 0;
-  for (const song of enriched) {
+function saveToLibrary(songs) {
+  let added = 0;
+  for (const song of songs) {
     const exists = library.some(s =>
       s.title.toLowerCase().replace(/\s+/g,'') === song.title.toLowerCase().replace(/\s+/g,'')
     );
     if (!exists) {
       library.push({
-        id:     `lib_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        title:  song.title,
-        artist: song.artist,
-        ccli:   song.ccli,
-        key:    song.key || '',
-        art:    song.art,
-        uri:    song.uri,
-        dur:    song.dur,
+        id: `lib_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        title: song.title, artist: song.artist || '', ccli: song.ccli || '',
+        key: song.key || '', art: song.art || '', uri: song.uri || '', dur: song.dur || '',
       });
-      addedCount++;
+      added++;
     }
   }
   saveLibrary();
-  updateLibStats();
-
-  // Render the split result card
-  renderSplitCard(file.name, enriched, addedCount);
-  restoreUploadZone();
-  showToast(`✅ ${addedCount} new songs added to library`);
+  return added;
 }
 
-async function handleFolderUpload(e) {
-  const files = Array.from(e.target.files || []).filter(f =>
-    f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
-  );
-  e.target.value = '';
-  if (!files.length) { showToast('No PDFs found in folder'); return; }
-
-  const zone = document.querySelector('.upload-zone');
-  zone.innerHTML = `<div class="upload-emo"><span class="spin">⚙️</span></div>
-    <div class="upload-title">Processing ${files.length} PDF${files.length !== 1 ? 's' : ''}…</div>
-    <div class="upload-sub">0 of ${files.length} complete</div>`;
-
-  let totalAdded = 0, totalSongs = 0;
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    zone.querySelector('.upload-sub').textContent = `${i + 1} of ${files.length}: ${file.name}`;
-    try {
-      let parsed = [];
-      if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
-        const pages = await extractPdfPages(file);
-        parsed = parsePdfPages(pages);
-      } else {
-        const rawText = await file.text();
-        parsed = parseSetText(rawText);
-      }
-      if (!parsed.length) continue;
-      totalSongs += parsed.length;
-
-      const enriched = [];
-      for (const song of parsed) {
-        if (spToken) {
-          try {
-            const q = song.artist ? `${song.title} ${song.artist}` : song.title;
-            const results = await spotifySearch(q, 1);
-            if (results.length) {
-              const t = results[0];
-              song.art = t.album.images[1]?.url || t.album.images[0]?.url || '';
-              song.uri = t.uri; song.dur = ms2str(t.duration_ms);
-              song.spotifyId = t.id;
-              if (!song.artist) song.artist = t.artists[0]?.name || '';
-            }
-          } catch(err) { /* non-fatal */ }
-        }
-        enriched.push(song);
-      }
-
-      let fileAdded = 0;
-      for (const song of enriched) {
-        const exists = library.some(s =>
-          s.title.toLowerCase().replace(/\s+/g,'') === song.title.toLowerCase().replace(/\s+/g,'')
-        );
-        if (!exists) {
-          library.push({
-            id: `lib_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-            title: song.title, artist: song.artist, ccli: song.ccli,
-            key: song.key || '', art: song.art, uri: song.uri, dur: song.dur,
-          });
-          fileAdded++;
-          totalAdded++;
-        }
-      }
-      saveLibrary();
-      if (enriched.length) renderSplitCard(file.name, enriched, fileAdded);
-    } catch(err) { console.warn('Error processing', file.name, err); }
-  }
-
-  updateLibStats();
-  restoreUploadZone();
-  showToast(`✅ Folder: ${totalAdded} new songs added from ${files.length} PDFs`);
+function showPdfStep(step) {
+  document.getElementById('pdf-upload-step').style.display = step === 'upload' ? 'block' : 'none';
+  document.getElementById('pdf-detect-step').style.display = step === 'detect' ? 'flex' : 'none';
 }
 
-function restoreUploadZone() {
-  const zone = document.querySelector('.upload-zone');
-  if (!zone) return;
-  zone.innerHTML = `
-    <div class="upload-emo">📄</div>
-    <div class="upload-title">Import More Songs</div>
-    <div class="upload-sub">Upload another PDF or a folder of PDFs to add more songs to your library.</div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-      <div class="upload-cta" onclick="document.getElementById('pdf-inp').click()" style="cursor:pointer">📄 Choose PDF</div>
-      <div class="upload-cta" onclick="document.getElementById('folder-inp').click()" style="cursor:pointer;background:var(--teal)">📁 Choose Folder</div>
-    </div>`;
+function showProg(show) {
+  document.getElementById('main-prog').style.display = show ? 'block' : 'none';
 }
+
+function setProgFill(pct) {
+  document.getElementById('main-prog-fill').style.width = (pct * 100) + '%';
+}
+
+function setPdfStatus(msg) {
+  document.getElementById('pdf-file-meta').textContent = msg;
+}
+
+function resetPdfTool() {
+  pdfToolBytes = null; pdfToolPages = []; pdfToolSongs = [];
+  pdfToolFileName = ''; pdfToolIsFolder = false;
+  showProg(false);
+  document.getElementById('pdf-file-bar').style.display  = 'none';
+  document.getElementById('pdf-sens-bar').style.display  = 'none';
+  document.getElementById('pdf-songs-list').innerHTML    = '';
+  document.getElementById('pdf-actions').style.display   = 'none';
+  // Reset buttons
+  document.getElementById('pdf-add-lib-btn').disabled   = false;
+  document.getElementById('pdf-add-lib-btn').innerHTML  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Add All to Library`;
+  document.getElementById('pdf-split-btn').disabled     = false;
+  document.getElementById('pdf-split-btn').innerHTML    = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save as Individual PDFs`;
+  showPdfStep('upload');
+}
+
+function restoreUploadZone() {} // no-op, kept for any lingering references
 
 function renderSplitCard(filename, songs, addedCount) {
   const container = document.getElementById('split-results');
   const card = document.createElement('div');
   card.className = 'split-card fi';
-
   const shortName = filename.length > 30 ? filename.slice(0,27)+'…' : filename;
   card.innerHTML = `
     <div class="split-card-hdr">
       <div>
         <div class="split-card-name">📄 ${escHTML(shortName)}</div>
-        <div class="split-card-count">${songs.length} songs detected · ${addedCount} new to library</div>
+        <div class="split-card-count">${songs.length} songs · ${addedCount} new to library</div>
       </div>
       <div class="split-actions">
         <button class="split-btn" onclick="addAllToSet(${JSON.stringify(songs).split('"').join('&quot;')})">Add All to Set</button>
@@ -1251,7 +1489,7 @@ function renderSplitCard(filename, songs, addedCount) {
       const ccliHtml = s.ccli
         ? `<div class="split-song-ccli">${keyHtml}CCLI <a href="${CCLI_BASE}${s.ccli}" target="_blank" onclick="event.stopPropagation()">#${s.ccli}</a></div>`
         : (keyHtml ? `<div class="split-song-ccli">${keyHtml}</div>` : '');
-      const artHtml = s.art
+      const artHtml  = s.art
         ? `<img class="split-song-art" src="${escHTML(s.art)}" onerror="this.innerHTML='🎵';this.style.fontSize='16px'">`
         : `<div class="split-song-art">🎵</div>`;
       return `<div class="split-song-row">
@@ -1266,898 +1504,12 @@ function renderSplitCard(filename, songs, addedCount) {
         <button class="add-pill-btn" onclick="addLibSongToSet('${escAttr(s.title)}','${escAttr(s.artist)}','${escAttr(s.ccli)}','${escAttr(s.art)}','${escAttr(s.uri)}','${escAttr(s.dur)}',this)">＋ Add</button>
       </div>`;
     }).join('')}`;
-
   container.insertBefore(card, container.firstChild);
-}
-
-function updateLibStats() {
-  const el = document.getElementById('lib-stats');
-  if (!el) return;
-  el.innerHTML = `
-    <div class="lib-stats-icon">🎵</div>
-    <div>
-      <div class="lib-stats-label">${library.length} song${library.length !== 1 ? 's' : ''} in library</div>
-      <div class="lib-stats-sub">Ready to use in new sets</div>
-    </div>`;
-}
-
-// ═══════════════════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════════════════
-function sw(tab) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('on'));
-  document.getElementById('sc-'+tab).classList.add('active');
-  document.getElementById('ni-'+tab).classList.add('on');
-  if (tab === 'sets') renderSets();
-  if (tab === 'add')  initNewSet();
-  if (tab === 'cal')  renderCalendar();
-  if (tab === 'pdfs') updateLibStats();
-}
-function goSets() { sw('sets'); }
-
-// ═══════════════════════════════════════════════════
-// HOME — SETS LIST
-// ═══════════════════════════════════════════════════
-function renderSets() {
-  const el = document.getElementById('sets-list');
-  if (!sets.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🎵</div><h3>No sets yet</h3><p>Tap "Create New Set" to get started</p></div>`;
-    return;
-  }
-  el.innerHTML = sets.map(s => {
-    const b = BANDS[s.band] || BANDS.rr;
-    const art  = s.songs[0]?.art || '';
-    const prev = s.songs.slice(0,3).map(x=>x.title).join(' · ');
-    return `<div class="set-card fi" onclick="openSet(${s.id})">
-      ${art
-        ? `<img class="set-card-art" src="${escHTML(art)}" onerror="this.outerHTML='<div class=\'set-card-art-fb\' style=\'background:${b.bg}\'>${b.icon}</div>'">`
-        : `<div class="set-card-art-fb" style="background:${b.bg}">${b.icon}</div>`}
-      <div class="set-card-body">
-        <div class="set-card-name">${escHTML(s.name)}</div>
-        <div class="set-card-meta">📅 ${s.date} · 🎵 ${s.songs.length} song${s.songs.length!==1?'s':''}</div>
-        <div class="set-card-preview">${escHTML(prev) || 'No songs'}</div>
-        ${s.playlistUrl ? `<div class="playlist-badge">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.5 17.3c-.2.4-.7.5-1 .3-2.8-1.7-6.4-2.1-10.6-1.1-.4.1-.8-.2-.9-.6-.1-.4.2-.8.6-.9 4.6-1 8.5-.6 11.6 1.3.5.2.5.7.3 1zm1.5-3.3c-.3.5-.8.6-1.3.3-3.2-2-8.1-2.6-11.9-1.4-.5.1-1-.1-1.1-.6-.1-.5.1-1 .6-1.1 4.3-1.3 9.7-.7 13.4 1.6.4.2.6.8.3 1.2zm.1-3.4C15.2 8.4 8.8 8.2 5.2 9.3c-.6.2-1.2-.2-1.4-.7-.2-.6.2-1.2.7-1.4 4.3-1.3 11.3-1 15.7 1.6.5.3.7 1 .4 1.5-.3.6-1 .8-1.6.5z"/></svg>
-          Playlist Created
-        </div>` : ''}
-      </div>
-      <div class="badge ${b.cls}">${b.label}</div>
-      <span style="color:var(--text3);font-size:16px;flex-shrink:0">›</span>
-    </div>`;
-  }).join('');
-}
-
-function openSet(id) {
-  curSet = sets.find(s => s.id === id);
-  if (!curSet) return;
-  const b = BANDS[curSet.band] || BANDS.rr;
-  const heroArt = curSet.songs[0]?.art || '';
-
-  document.getElementById('ms-art').innerHTML = heroArt
-    ? `<img class="modal-art" src="${escHTML(heroArt)}" onerror="this.style.display='none'">`
-    : `<div class="modal-art-fb" style="background:${b.bg}">${b.icon}</div>`;
-
-  const tag = document.getElementById('ms-tag');
-  tag.textContent = b.label;
-  tag.style.cssText = `background:${b.bg};color:${b.fg};display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;margin-bottom:7px`;
-
-  document.getElementById('ms-title').textContent = curSet.name;
-  document.getElementById('ms-meta').textContent  = `📅 ${curSet.date}  ·  🎵 ${curSet.songs.length} song${curSet.songs.length!==1?'s':''}`;
-  document.getElementById('ms-pl-badge').innerHTML = curSet.playlistUrl
-    ? `<a href="${curSet.playlistUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:var(--spotify-lt);color:var(--spotify);border-radius:20px;padding:4px 10px;font-size:10px;font-weight:800;margin-top:6px;text-decoration:none">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.5 17.3c-.2.4-.7.5-1 .3-2.8-1.7-6.4-2.1-10.6-1.1-.4.1-.8-.2-.9-.6-.1-.4.2-.8.6-.9 4.6-1 8.5-.6 11.6 1.3.5.2.5.7.3 1zm1.5-3.3c-.3.5-.8.6-1.3.3-3.2-2-8.1-2.6-11.9-1.4-.5.1-1-.1-1.1-.6-.1-.5.1-1 .6-1.1 4.3-1.3 9.7-.7 13.4 1.6.4.2.6.8.3 1.2zm.1-3.4C15.2 8.4 8.8 8.2 5.2 9.3c-.6.2-1.2-.2-1.4-.7-.2-.6.2-1.2.7-1.4 4.3-1.3 11.3-1 15.7 1.6.5.3.7 1 .4 1.5-.3.6-1 .8-1.6.5z"/></svg>
-        Open Spotify Playlist
-      </a>`
-    : '';
-
-  document.getElementById('ms-songs').innerHTML = curSet.songs.length
-    ? curSet.songs.map((s,i) => `
-        <div class="modal-song">
-          <span class="modal-song-num">${i+1}</span>
-          ${s.art
-            ? `<img class="modal-song-art" src="${escHTML(s.art)}" onerror="this.style.opacity=0">`
-            : `<div class="modal-song-art" style="background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:17px">🎵</div>`}
-          <div style="flex:1;min-width:0">
-            <div class="modal-song-name">${escHTML(s.title)}</div>
-            ${(s.key || s.ccli) ? `<div class="modal-song-ccli">
-              ${s.key ? `<span style="background:var(--amber-lt);color:var(--amber);border-radius:20px;padding:1px 6px;font-size:10px;font-weight:800;margin-right:3px">Key: ${escHTML(s.key)}</span>` : ''}
-              ${s.ccli ? `CCLI <a href="${CCLI_BASE}${s.ccli}" target="_blank" onclick="event.stopPropagation()">#${s.ccli}</a>` : ''}
-            </div>` : ''}
-            ${s.artist ? `<div class="modal-song-artist">${escHTML(s.artist)}</div>` : ''}
-          </div>
-          <span class="modal-song-dur">${s.dur||''}</span>
-        </div>`).join('')
-    : `<div class="empty" style="padding:20px"><div class="empty-icon">🎵</div><h3>No songs</h3></div>`;
-
-  om('modal-set');
-}
-
-// ═══════════════════════════════════════════════════
-// NEW SET
-// ═══════════════════════════════════════════════════
-function initNewSet() {
-  selSongs = [];
-  selBand  = 'rr';
-  const nm = document.getElementById('set-nm');
-  const srch = document.getElementById('song-srch');
-  if (nm) nm.value = '';
-  if (srch) srch.value = '';
-  document.getElementById('ac').classList.remove('open');
-  renderBandRow();
-  renderSelSongs();
-  updateFab();
-}
-
-function renderBandRow() {
-  document.getElementById('band-row').innerHTML = Object.entries(BANDS).map(([k,b]) =>
-    `<div class="band-chip ${selBand===k?'active':''}" style="background:${b.bg};color:${b.fg};${selBand===k?`border-color:${b.fg}`:''}" onclick="pickBand('${k}')">${b.label}</div>`
-  ).join('');
-}
-
-function pickBand(k) { selBand = k; renderBandRow(); updateFab(); }
-
-// ─── Search: local library first, then Spotify ───
-function doSearch(v) {
-  const ac = document.getElementById('ac');
-  clearTimeout(searchTm);
-  if (!v.trim()) { ac.classList.remove('open'); return; }
-
-  const q = v.toLowerCase();
-  const localMatches = library.filter(s =>
-    s.title.toLowerCase().includes(q) ||
-    (s.artist && s.artist.toLowerCase().includes(q)) ||
-    (s.ccli && s.ccli.includes(q))
-  ).slice(0, 6);
-
-  let html = '';
-  if (localMatches.length > 0) {
-    html += `<div class="ac-divider">In Your Library</div>`;
-    html += localMatches.map(s => `
-      <div class="ac-item" onclick="addSongToSet(${JSON.stringify(s).split('"').join('&quot;')})">
-        ${s.art
-          ? `<img class="ac-art" style="border-radius:8px" src="${escHTML(s.art)}" onerror="this.innerHTML='🎵';this.style.fontSize='16px'">`
-          : `<div class="ac-art">🎵</div>`}
-        <div style="flex:1;min-width:0">
-          <div class="ac-name">${escHTML(s.title)}</div>
-          ${s.artist ? `<div class="ac-sub">${escHTML(s.artist)}</div>` : ''}
-          ${s.ccli ? `<div class="ac-ccli">CCLI #${s.ccli}</div>` : ''}
-        </div>
-        ${selSongs.some(x=>x.id===s.id) ? '<span style="color:var(--coral);font-size:12px;font-weight:800;flex-shrink:0">✓</span>' : ''}
-      </div>`).join('');
-  }
-
-  // Always show Spotify option if connected
-  if (spToken) {
-    html += `<div class="ac-divider">${localMatches.length ? 'Or Search' : 'Search'} Spotify</div>`;
-    html += `<div class="ac-item" id="ac-sp-trigger" onclick="doSpotifySearch('${escAttr(v)}')">
-      <div class="ac-art" style="background:var(--spotify-lt)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--spotify)"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.5 17.3c-.2.4-.7.5-1 .3-2.8-1.7-6.4-2.1-10.6-1.1-.4.1-.8-.2-.9-.6-.1-.4.2-.8.6-.9 4.6-1 8.5-.6 11.6 1.3.5.2.5.7.3 1zm1.5-3.3c-.3.5-.8.6-1.3.3-3.2-2-8.1-2.6-11.9-1.4-.5.1-1-.1-1.1-.6-.1-.5.1-1 .6-1.1 4.3-1.3 9.7-.7 13.4 1.6.4.2.6.8.3 1.2zm.1-3.4C15.2 8.4 8.8 8.2 5.2 9.3c-.6.2-1.2-.2-1.4-.7-.2-.6.2-1.2.7-1.4 4.3-1.3 11.3-1 15.7 1.6.5.3.7 1 .4 1.5-.3.6-1 .8-1.6.5z"/></svg>
-      </div>
-      <div style="flex:1"><div class="ac-name">Search Spotify for "${escHTML(v)}"</div><div class="ac-sub">Find songs not in your library</div></div>
-    </div>`;
-  } else if (!localMatches.length) {
-    html += `<div class="ac-hint">No local matches · <span style="color:var(--coral);cursor:pointer;font-weight:700" onclick="loginSpotify()">Connect Spotify</span> to search online</div>`;
-  }
-
-  ac.innerHTML = html;
-  ac.classList.add('open');
-}
-
-async function doSpotifySearch(q) {
-  const ac = document.getElementById('ac');
-  ac.innerHTML = `<div class="ac-hint"><span class="spin">⟳</span> Searching Spotify…</div>`;
-  ac.classList.add('open');
-
-  const tracks = await spotifySearch(q, 6);
-  if (!tracks.length) {
-    ac.innerHTML = `<div class="ac-hint">No Spotify results for "${escHTML(q)}"</div>`;
-    return;
-  }
-
-  ac.innerHTML = `<div class="ac-divider">Spotify Results</div>` + tracks.map(t => {
-    const art  = t.album.images[1]?.url || t.album.images[0]?.url || '';
-    const song = { id:'sp_'+t.id, title:t.name, artist:t.artists.map(a=>a.name).join(', '), ccli:'', art, uri:t.uri, dur:ms2str(t.duration_ms) };
-    const already = selSongs.some(x => x.id === song.id);
-    return `<div class="ac-item" onclick="addSongToSet(${JSON.stringify(song).split('"').join('&quot;')})">
-      ${art ? `<img class="ac-art" style="border-radius:8px" src="${escHTML(art)}" onerror="this.innerHTML='🎵'">` : `<div class="ac-art">🎵</div>`}
-      <div style="flex:1;min-width:0">
-        <div class="ac-name">${escHTML(t.name)}</div>
-        <div class="ac-sub">${escHTML(t.artists[0].name)} · ${ms2str(t.duration_ms)}</div>
-      </div>
-      ${already ? '<span style="color:var(--coral);font-size:12px;font-weight:800;flex-shrink:0">✓</span>' : ''}
-    </div>`;
-  }).join('');
-}
-
-function addSongToSet(song) {
-  // song may come as object or from onclick attribute (already parsed)
-  if (typeof song === 'string') {
-    try { song = JSON.parse(song); } catch(e) { return; }
-  }
-  if (!song.id) song.id = `lib_${Date.now()}`;
-  if (selSongs.some(s => s.id === song.id)) { showToast('Already in set'); return; }
-  selSongs.push(song);
-  document.getElementById('ac').classList.remove('open');
-  document.getElementById('song-srch').value = '';
-  renderSelSongs();
-  updateFab();
-  showToast(`Added: ${song.title}`);
-}
-
-// Called from split card "+ Add" buttons
-function addLibSongToSet(title, artist, ccli, art, uri, dur, btn) {
-  const existing = library.find(s => s.title === title);
-  const song = existing || { id:`tmp_${Date.now()}`, title, artist, ccli, art, uri, dur };
-  if (selSongs.some(s => s.title === title)) {
-    showToast('Already in set');
-    return;
-  }
-  selSongs.push(song);
-  if (btn) { btn.textContent = '✓ Added'; btn.classList.add('done'); }
-  renderSelSongs();
-  updateFab();
-  showToast(`Added: ${title}`);
-}
-
-function addAllToSet(songsData) {
-  // songsData comes as array from onclick
-  if (typeof songsData === 'string') {
-    try { songsData = JSON.parse(songsData); } catch(e) { return; }
-  }
-  let added = 0;
-  for (const s of songsData) {
-    if (!selSongs.some(x => x.title === s.title)) {
-      selSongs.push({ id:`tmp_${Date.now()}_${Math.random()}`, ...s });
-      added++;
-    }
-  }
-  sw('add');
-  showToast(`${added} songs added to set`);
-}
-
-function removeFromSet(id) {
-  selSongs = selSongs.filter(s => s.id !== id);
-  renderSelSongs();
-  updateFab();
-}
-
-function moveSong(id, dir) {
-  const i = selSongs.findIndex(s => s.id === id);
-  const j = i + dir;
-  if (j < 0 || j >= selSongs.length) return;
-  [selSongs[i], selSongs[j]] = [selSongs[j], selSongs[i]];
-  renderSelSongs();
-}
-
-function renderSelSongs() {
-  const el = document.getElementById('sel-songs-list');
-  if (!selSongs.length) {
-    el.innerHTML = `<div class="empty" style="padding:24px 32px"><div class="empty-icon">🎵</div><h3>No songs yet</h3><p>Search your library or Spotify above</p></div>`;
-    return;
-  }
-  el.innerHTML = selSongs.map((s, i) => `
-    <div class="song-row">
-      ${s.art
-        ? `<img class="song-row-art" src="${escHTML(s.art)}" onerror="this.style.opacity=0">`
-        : `<div class="song-row-art" style="background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:18px">🎵</div>`}
-      <div style="flex:1;min-width:0">
-        <div class="song-row-name">${escHTML(s.title)}</div>
-        ${(s.key || s.ccli) ? `<div class="song-row-ccli">
-          ${s.key ? `<span style="background:var(--amber-lt);color:var(--amber);border-radius:20px;padding:1px 6px;font-size:10px;font-weight:800;margin-right:3px">Key: ${escHTML(s.key)}</span>` : ''}
-          ${s.ccli ? `CCLI <a href="${CCLI_BASE}${s.ccli}" target="_blank" onclick="event.stopPropagation()">#${s.ccli}</a>` : ''}
-        </div>` : ''}
-        ${s.artist ? `<div class="song-row-artist">${escHTML(s.artist)}</div>` : ''}
-      </div>
-      <div class="song-row-dur">${s.dur||''}</div>
-      <div class="song-row-actions">
-        ${i > 0 ? `<button class="row-btn" onclick="moveSong('${s.id}',-1)" title="Move up">↑</button>` : '<span style="width:27px"></span>'}
-        ${i < selSongs.length-1 ? `<button class="row-btn" onclick="moveSong('${s.id}',1)" title="Move down">↓</button>` : '<span style="width:27px"></span>'}
-        <button class="row-btn" onclick="removeFromSet('${s.id}')" title="Remove" style="color:var(--red)">×</button>
-      </div>
-    </div>`).join('');
-}
-
-function updateFab() {
-  const fab = document.getElementById('fab');
-  const bar = document.getElementById('sel-bar');
-  if (!fab) return;
-  if (selSongs.length) {
-    fab.classList.add('vis');
-    bar.textContent = `${selSongs.length} song${selSongs.length!==1?'s':''} · ${BANDS[selBand].label}`;
-    bar.classList.add('show');
-  } else {
-    fab.classList.remove('vis');
-    bar.classList.remove('show');
-  }
-}
-
-async function saveSet() {
-  if (!selSongs.length) { showToast('Add at least one song first'); return; }
-  const nm = (document.getElementById('set-nm')?.value || '').trim() ||
-    `${BANDS[selBand].label} — ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`;
-
-  const newSet = {
-    id:      Date.now(),
-    name:    nm,
-    date:    new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-    songs:   selSongs.map(s => ({...s})),
-    band:    selBand,
-    playlistUrl: null,
-  };
-  sets.unshift(newSet);
-  saveSets();
-
-  showToast(`"${nm}" saved ✅`);
-
-  // Auto-create Spotify playlist if connected
-  if (spToken && spUser) {
-    showToast('Creating Spotify playlist…');
-    await autoCreatePlaylist(newSet);
-  }
-
-  setTimeout(() => sw('sets'), 400);
-}
-
-// ═══════════════════════════════════════════════════
-// PLAYLIST — AUTO-CREATE ON SAVE
-// ═══════════════════════════════════════════════════
-async function autoCreatePlaylist(set) {
-  try {
-    // 1. Check for duplicate
-    const existing = await findExistingPlaylist(set.name);
-    if (existing) {
-      const s = sets.find(x => x.id === set.id);
-      if (s) { s.playlistUrl = existing.external_urls?.spotify; saveSets(); }
-      showToast(`Playlist already exists on Spotify`);
-      return;
-    }
-    // 2. Create
-    const pl = await spFetch(`https://api.spotify.com/v1/users/${spUser.id}/playlists`, {
-      method:'POST',
-      body: JSON.stringify({
-        name: set.name,
-        description: `SetFlow · ${set.date} · ${BANDS[set.band]?.label || ''}`,
-        public: false
-      })
-    });
-    if (!pl?.id) throw new Error('No playlist id');
-    // 3. Match & add tracks
-    const uris = [];
-    for (const song of set.songs) {
-      if (song.uri) { uris.push(song.uri); continue; }
-      const results = await spotifySearch(`${song.title} ${song.artist}`, 1);
-      if (results[0]) uris.push(results[0].uri);
-    }
-    if (uris.length) {
-      await spFetch(`https://api.spotify.com/v1/playlists/${pl.id}/tracks`, {
-        method:'POST',
-        body: JSON.stringify({ uris })
-      });
-    }
-    // 4. Save URL to set
-    const s = sets.find(x => x.id === set.id);
-    if (s) { s.playlistUrl = pl.external_urls?.spotify; saveSets(); }
-    showToast(`✅ Spotify playlist created (${uris.length} tracks)`);
-  } catch(err) {
-    showToast('Playlist creation failed — try manually');
-  }
-}
-
-// ─── Manual playlist builder (from set detail modal) ───
-async function openPlaylistModal() {
-  if (!spToken) { showToast('Connect Spotify first'); cm('modal-set'); setTimeout(loginSpotify, 300); return; }
-  if (!curSet?.songs?.length) { showToast('No songs in this set'); return; }
-
-  plTracks = {};
-  cm('modal-set');
-  document.getElementById('pl-title').textContent = curSet.name;
-  document.getElementById('pl-meta').textContent  = 'Matching songs on Spotify…';
-  document.getElementById('pl-songs').innerHTML   = curSet.songs.map(s =>
-    `<div class="pl-song">
-      <div class="pl-song-art">⟳</div>
-      <div style="flex:1"><div class="pl-song-name">${escHTML(s.title)}</div><div class="pl-song-artist">${escHTML(s.artist||'')}</div></div>
-      <div class="pl-song-status spin">⟳</div>
-    </div>`).join('');
-  document.getElementById('pl-create-btn').textContent = 'Matching…';
-  document.getElementById('pl-create-btn').disabled   = true;
-  om('modal-pl');
-
-  for (const song of curSet.songs) {
-    if (song.uri) { plTracks[song.id] = { uri:song.uri, name:song.title, artist:song.artist, art:song.art, found:true }; continue; }
-    const results = await spotifySearch(`${song.title} ${song.artist}`, 1);
-    if (results[0]) {
-      const t = results[0];
-      plTracks[song.id] = {
-        uri:    t.uri,
-        name:   t.name,
-        artist: t.artists[0]?.name,
-        art:    t.album.images[1]?.url || t.album.images[0]?.url || '',
-        dur:    ms2str(t.duration_ms),
-        found:  true
-      };
-    } else {
-      plTracks[song.id] = { uri:null, name:song.title, artist:song.artist, art:song.art||'', found:false };
-    }
-  }
-  renderPlaylistModal();
-}
-
-function renderPlaylistModal() {
-  const confirmed = Object.values(plTracks).filter(t => t.found).length;
-  document.getElementById('pl-meta').textContent = `${confirmed} of ${curSet.songs.length} songs matched on Spotify`;
-  document.getElementById('pl-create-btn').textContent = `Create Playlist (${confirmed} tracks)`;
-  document.getElementById('pl-create-btn').disabled = confirmed === 0;
-  document.getElementById('pl-songs').innerHTML = curSet.songs.map(song => {
-    const t = plTracks[song.id];
-    return `<div class="pl-song">
-      ${t?.art
-        ? `<img class="pl-song-art" src="${escHTML(t.art)}" onerror="this.style.opacity=0" style="border-radius:10px;object-fit:cover">`
-        : `<div class="pl-song-art">🎵</div>`}
-      <div style="flex:1;min-width:0">
-        <div class="pl-song-name">${escHTML(t?.name || song.title)}</div>
-        <div class="pl-song-artist">${escHTML(t?.artist || song.artist || '')}${t?.dur ? ' · '+t.dur : ''}</div>
-      </div>
-      <div class="pl-song-status">${t?.found ? '✅' : '<span style="color:var(--text3);font-size:11px">Not found</span>'}</div>
-    </div>`;
-  }).join('');
-}
-
-async function createPlaylist() {
-  if (!spToken || !spUser) return;
-  const btn = document.getElementById('pl-create-btn');
-  btn.textContent = '⟳ Creating…';
-  btn.disabled    = true;
-  try {
-    // Duplicate check
-    const existing = await findExistingPlaylist(curSet.name);
-    if (existing) {
-      const s = sets.find(x => x.id === curSet.id);
-      if (s) { s.playlistUrl = existing.external_urls?.spotify; saveSets(); }
-      cm('modal-pl');
-      showToast('Playlist already exists on Spotify ✅');
-      return;
-    }
-    // Create
-    const pl = await spFetch(`https://api.spotify.com/v1/users/${spUser.id}/playlists`, {
-      method:'POST',
-      body: JSON.stringify({
-        name: curSet.name,
-        description: `SetFlow · ${curSet.date} · ${BANDS[curSet.band]?.label || ''}`,
-        public: false
-      })
-    });
-    if (!pl?.id) throw new Error('Creation failed');
-    const uris = Object.values(plTracks).filter(t => t.found && t.uri).map(t => t.uri);
-    if (uris.length) {
-      await spFetch(`https://api.spotify.com/v1/playlists/${pl.id}/tracks`, {
-        method:'POST', body:JSON.stringify({ uris })
-      });
-    }
-    const s = sets.find(x => x.id === curSet.id);
-    if (s) { s.playlistUrl = pl.external_urls?.spotify; saveSets(); }
-    cm('modal-pl');
-    showToast(`✅ Playlist "${curSet.name}" created!`);
-    if (pl.external_urls?.spotify) {
-      setTimeout(() => {
-        if (confirm('Open playlist in Spotify?')) window.open(pl.external_urls.spotify, '_blank');
-      }, 600);
-    }
-  } catch(err) {
-    btn.textContent = 'Try Again';
-    btn.disabled    = false;
-    showToast('Error — check connection and try again');
-  }
-}
-
-// ═══════════════════════════════════════════════════
-// CALENDAR
-// ═══════════════════════════════════════════════════
-function getWeeks() {
-  const weeks = [], d = new Date();
-  // Start from next Sunday
-  const day = d.getDay();
-  d.setDate(d.getDate() + (day === 0 ? 7 : 7 - day));
-  for (let w = 0; w < 13; w++) {
-    weeks.push({ week: w+1, date: new Date(d), band: WEEK_ROT[w%5] });
-    d.setDate(d.getDate() + 7);
-  }
-  return weeks;
-}
-
-function renderCalendar() {
-  const weeks  = getWeeks();
-  const months = {};
-  weeks.forEach(w => {
-    const m = w.date.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    if (!months[m]) months[m] = [];
-    months[m].push(w);
-  });
-
-  let html = `<div class="cal-gcal-badge fi">
-    <span style="font-size:17px">📅</span>
-    <div><div style="font-size:13px;font-weight:700;color:var(--blue)">Google Calendar Connected</div><div style="font-size:11px;color:var(--text2);margin-top:1px;font-weight:500">Showing next 3 months of rehearsals</div></div>
-  </div>`;
-
-  Object.entries(months).forEach(([month, mw]) => {
-    html += `<div class="cal-month-label">${month}</div>`;
-    mw.forEach(w => {
-      const b    = BANDS[w.band];
-      const dk   = w.date.toDateString();
-      const done = calAdded[dk];
-      const isToday = dk === new Date().toDateString();
-      html += `<div class="cal-week fi">
-        <div class="cal-week-hdr">
-          <div class="cal-date-block${isToday?' today':''}">
-            <div class="cal-date-day">${w.date.getDate()}</div>
-            <div class="cal-date-mon">${w.date.toLocaleDateString('en-GB',{month:'short'})}</div>
-          </div>
-          <div class="cal-week-info">
-            <div class="cal-week-label">Week ${w.week} · Rehearsal</div>
-            <div class="cal-week-name">${b.label}</div>
-          </div>
-        </div>
-        <div class="cal-week-tags">
-          <div class="cal-week-tags-l">
-            <span class="badge ${b.cls}">${b.label}</span>
-            <span class="badge church">⛪ Church</span>
-            <span class="badge church">🎸 Youth Band</span>
-          </div>
-          ${done
-            ? `<button class="cal-add-btn done">✓ Added</button>`
-            : `<button class="cal-add-btn" onclick="addWeek('${dk}',this)">＋ Add</button>`}
-        </div>
-      </div>`;
-    });
-  });
-
-  html += `<div style="padding:4px 16px 16px">
-    <button class="cal-add-all-btn" onclick="addAllWeeks()">📅 Add All 3 Months to Calendar</button>
-  </div>`;
-
-  document.getElementById('cal-body').innerHTML = html;
-}
-
-function addWeek(dk, btn) {
-  calAdded[dk] = true; saveCal();
-  btn.className = 'cal-add-btn done'; btn.textContent = '✓ Added';
-  showToast('Added to calendar ✓');
-}
-function addAllWeeks() {
-  getWeeks().forEach(w => calAdded[w.date.toDateString()] = true);
-  saveCal(); renderCalendar();
-  showToast('All rehearsals added! 📅');
-}
-
-// ═══════════════════════════════════════════════════
-// MODAL HELPERS
-// ═══════════════════════════════════════════════════
-function om(id) { document.getElementById(id).classList.add('open'); }
-function cm(id) { document.getElementById(id).classList.remove('open'); }
-
-// ═══════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════
-function escHTML(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escAttr(s) {
-  return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-}
-
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
-}
-
-function setGreeting() {
-  const h = new Date().getHours();
-  const el = document.getElementById('greeting-time');
-  if (!el) return;
-  el.textContent = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
-
-// Close AC on outside tap
-document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrap') && !e.target.closest('.inp-wrap')) {
-    document.getElementById('ac')?.classList.remove('open');
-  }
-});
-
-// Swipe down to close modals
-document.querySelectorAll('.modal-sheet').forEach(sheet => {
-  let startY = 0;
-  sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive:true });
-  sheet.addEventListener('touchend',   e => {
-    if (e.changedTouches[0].clientY - startY > 80) {
-      const modal = sheet.closest('.modal');
-      if (modal) modal.classList.remove('open');
-    }
-  }, { passive:true });
-});
-
-// ═══════════════════════════════════════════════════
-// DARK MODE / THEME
-// ═══════════════════════════════════════════════════
-function applyTheme(dark) {
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.querySelector('meta[name="theme-color"]').content = dark ? '#0F1117' : '#FAFAFA';
-  localStorage.setItem('sf_dark', dark ? '1' : '0');
-  const cb = document.getElementById('toggle-dark');
-  if (cb) cb.checked = dark;
-}
-
-function loadTheme() {
-  const saved = localStorage.getItem('sf_dark');
-  const dark = saved === '1' || (saved === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  applyTheme(dark);
-}
-
-// ═══════════════════════════════════════════════════
-// PDF SPLITTER
-// ═══════════════════════════════════════════════════
-let splitterPdfBytes    = null;
-let splitterPages       = [];   // structured page objects from extractPdfPages
-let splitterDetectedSongs = [];
-let splitterSensitivity = 7;
-let splitterFileName    = '';
-
-// Drag-and-drop on splitter drop zone
-(function() {
-  const dz = document.getElementById('splitter-drop');
-  if (!dz) return;
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault(); dz.classList.remove('drag');
-    const f = e.dataTransfer.files[0];
-    if (f && (f.name.endsWith('.pdf') || f.type === 'application/pdf')) loadSplitterFile({ target:{ files:[f] } });
-  });
-})();
-
-async function loadSplitterFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  e.target.value = '';
-  splitterFileName = file.name.replace(/\.pdf$/i, '');
-
-  const drop = document.getElementById('splitter-drop');
-  drop.innerHTML = `<div class="splitter-drop-emo"><span class="spin">⚙️</span></div><div class="splitter-drop-title">Analysing PDF…</div><div class="splitter-drop-sub">${escHTML(file.name)}</div>`;
-
-  const prog = document.getElementById('splitter-prog');
-  const fill = document.getElementById('splitter-prog-fill');
-  prog.style.display = 'block';
-  fill.style.width = '0%';
-
-  try {
-    // Store raw bytes for PDF-lib splitting
-    const buf = await file.arrayBuffer();
-    splitterPdfBytes = new Uint8Array(buf);
-
-    // Use the same extractPdfPages used for library import
-    // We need progress — re-implement inline with progress callback
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const pdfjs = await pdfjsLib.getDocument({ data: splitterPdfBytes.slice() }).promise;
-    const total = pdfjs.numPages;
-    splitterPages = [];
-
-    for (let pageNum = 1; pageNum <= total; pageNum++) {
-      const page    = await pdfjs.getPage(pageNum);
-      const content = await page.getTextContent();
-      const vp      = page.getViewport({ scale: 1 });
-
-      const byY = {};
-      for (const item of content.items) {
-        if (!item.str || !item.str.trim()) continue;
-        const y  = Math.round(vp.height - item.transform[5]);
-        const sz = Math.abs(item.transform[3]);
-        if (!byY[y]) byY[y] = { parts: [], sz: 0 };
-        byY[y].parts.push(item.str.trim());
-        byY[y].sz = Math.max(byY[y].sz, sz);
-      }
-
-      const sortedYs = Object.keys(byY).map(Number).sort((a, b) => a - b);
-      const lines = sortedYs.map(y => ({
-        text: byY[y].parts.join(' ').trim(),
-        sz:   byY[y].sz,
-        y
-      })).filter(l => l.text.length > 0);
-
-      splitterPages.push({ pageNum, lines, allText: lines.map(l => l.text).join('\n'), height: vp.height });
-      fill.style.width = (pageNum / total * 100) + '%';
-      // yield to UI
-      await new Promise(r => setTimeout(r, 0));
-    }
-
-    prog.style.display = 'none';
-    drop.innerHTML = `<div class="splitter-drop-emo">✅</div><div class="splitter-drop-title">${escHTML(file.name)}</div><div class="splitter-drop-sub">${total} pages loaded — songs detected below</div>`;
-    drop.style.cursor = 'default';
-    drop.onclick = null;
-
-    document.getElementById('splitter-sens-bar').style.display = 'flex';
-    renderSplitterSongs();
-  } catch(err) {
-    console.error(err);
-    prog.style.display = 'none';
-    resetSplitter();
-    showToast('Could not read PDF — ' + err.message);
-  }
-}
-
-function renderSplitterSongs() {
-  // Use parsePdfPages — same engine as library import
-  // Sensitivity adjusts the Key detection threshold in page top region:
-  //   High sensitivity = look in bigger region of page (catches edge cases)
-  //   Low sensitivity = only top 30% (very strict)
-  const topFraction = 0.25 + (splitterSensitivity - 1) * 0.03; // 0.25 to 0.52
-
-  // Temporarily patch the fraction used by parsePdfPages
-  // We do this by running our own mini-detect here
-  const RE_KEY  = /^Key\s*[:\s]\s*([A-G][b#]?(?:m(?:aj|in)?)?)\s*$/i;
-  const RE_BPM  = /^\d{2,3}\s*BPM\s*$/i;
-  const RE_CCLI = /CCLI\s*(?:Song\s*(?:No\.?|#)?\s*)?:?\s*(\d{5,8})/i;
-  const RE_NOISE = /For use solely|All rights reserved|www\.ccli|SongSelect|©|\(c\)|Publishing|Thankyou Music|Capitol CMG|sixsteps|Bethel Music|Elevation|Maverick City|SHOUT!/i;
-  const RE_CHORD = /^[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*(?:\s+[A-G][b#]?(?:m|maj|min|sus|add|dim|aug|2|4|5|6|7|9|11|13|\/[A-G][b#]?)*)*\s*$/;
-  const RE_SECTION = /^(?:Verse|Chorus|Bridge|Pre-?Chorus|Intro|Outro|Interlude|Tag|Turnaround|Instrumental|Coda|Ending|Refrain|Post-?Chorus|VERSE|CHORUS|BRIDGE|INTRO|OUTRO|TURNAROUND|ENDING|TAG)\s*\d*\s*[a-zA-Z]?\s*$/;
-  const RE_PAGENUM = /^\d{1,3}$/;
-  const RE_ARTIST_BY = /^\((?:based on|as published by|as recorded by|original key)/i;
-
-  const songStartIndices = [];
-  for (let i = 0; i < splitterPages.length; i++) {
-    const page     = splitterPages[i];
-    const topLines = page.lines.filter(l => l.y < page.height * topFraction);
-    const hasKey   = topLines.some(l => RE_KEY.test(l.text));
-    if (hasKey) songStartIndices.push(i);
-  }
-
-  splitterDetectedSongs = songStartIndices.map((startIdx, si) => {
-    const endIdx   = si + 1 < songStartIndices.length
-      ? songStartIndices[si + 1] - 1
-      : splitterPages.length - 1;
-
-    const page     = splitterPages[startIdx];
-    const topLines = page.lines.filter(l => l.y < page.height * 0.6);
-    const keyLineY = topLines.find(l => RE_KEY.test(l.text))?.y ?? Infinity;
-    const aboveKey = page.lines.filter(l => l.y < keyLineY);
-
-    let key = '', title = '', ccli = '';
-    const km = page.lines.find(l => RE_KEY.test(l.text));
-    if (km) key = km.text.match(RE_KEY)[1].trim();
-
-    // Title: largest font above key line
-    const bySize = [...aboveKey].sort((a, b) => b.sz - a.sz);
-    for (const l of bySize) {
-      const t = l.text;
-      if (!t || t.length < 2 || t.length > 100) continue;
-      if (RE_NOISE.test(t) || RE_CHORD.test(t) || RE_SECTION.test(t)) continue;
-      if (RE_PAGENUM.test(t) || RE_ARTIST_BY.test(t)) continue;
-      if (RE_CCLI.test(t)) continue;
-      if (t.split(/\s+/).length > 10) continue;
-      title = t; break;
-    }
-    if (!title) {
-      for (const l of aboveKey) {
-        const t = l.text;
-        if (!t || t.length < 2 || t.length > 100) continue;
-        if (RE_NOISE.test(t) || RE_CHORD.test(t) || RE_SECTION.test(t)) continue;
-        if (RE_PAGENUM.test(t) || RE_ARTIST_BY.test(t) || RE_CCLI.test(t)) continue;
-        if (t.split(/\s+/).length > 10) continue;
-        title = t; break;
-      }
-    }
-    if (!title) title = `Song ${si + 1}`;
-
-    // CCLI from any page in the block
-    for (let pi = startIdx; pi <= endIdx; pi++) {
-      const m = splitterPages[pi].allText.match(RE_CCLI);
-      if (m) { ccli = m[1]; break; }
-    }
-
-    return {
-      name:      title,
-      key,
-      ccli,
-      startPage: splitterPages[startIdx].pageNum,
-      endPage:   splitterPages[endIdx].pageNum,
-    };
-  });
-
-  const container = document.getElementById('splitter-songs');
-  if (!splitterDetectedSongs.length) {
-    container.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-icon">🔍</div><h3>No songs detected</h3><p>Try increasing sensitivity in Settings</p></div>`;
-    document.getElementById('splitter-save-wrap').style.display = 'none';
-    return;
-  }
-
-  container.innerHTML = splitterDetectedSongs.map((s, i) => {
-    const keyBadge = s.key  ? `<span class="splitter-key-badge">Key: ${escHTML(s.key)}</span>` : '';
-    const ccliText = s.ccli ? `CCLI #${s.ccli} · ` : '';
-    const pages    = s.startPage === s.endPage ? `p.${s.startPage}` : `pp.${s.startPage}–${s.endPage}`;
-    return `<div class="splitter-song-card">
-      <div class="splitter-song-num">${i+1}</div>
-      <div class="splitter-song-info">
-        <div class="splitter-song-name" contenteditable="true" onblur="splitterDetectedSongs[${i}].name=this.textContent.trim()" spellcheck="false">${escHTML(s.name)}</div>
-        <div class="splitter-song-meta">${keyBadge}${ccliText}${pages}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('splitter-save-wrap').style.display = 'block';
-}
-
-function onSplitterSens(v) {
-  splitterSensitivity = parseInt(v);
-  document.getElementById('splitter-sens-val').textContent = v;
-  document.getElementById('global-sensitivity').value = v;
-  document.getElementById('sens-val').textContent = v;
-  if (splitterPages.length) renderSplitterSongs();
-}
-
-async function splitAndSave() {
-  if (!splitterDetectedSongs.length || !splitterPdfBytes) return;
-  const btn = document.getElementById('splitter-save-btn');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spin">⚙️</span> Splitting…`;
-
-  try {
-    const srcDoc = await PDFLib.PDFDocument.load(splitterPdfBytes);
-    for (let i = 0; i < splitterDetectedSongs.length; i++) {
-      const song  = splitterDetectedSongs[i];
-      const newDoc = await PDFLib.PDFDocument.create();
-      const pageIdxs = [];
-      for (let p = song.startPage; p <= song.endPage; p++) pageIdxs.push(p - 1);
-      const copied = await newDoc.copyPages(srcDoc, pageIdxs);
-      copied.forEach(cp => newDoc.addPage(cp));
-
-      const bytes = await newDoc.save();
-      const blob  = new Blob([bytes], { type: 'application/pdf' });
-      const url   = URL.createObjectURL(blob);
-      const a     = document.createElement('a');
-      a.href      = url;
-      a.download  = `${song.name.replace(/[^a-z0-9 _\-]/gi, '').trim() || ('Song_'+(i+1))}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-
-      btn.innerHTML = `<span class="spin">⚙️</span> ${i+1}/${splitterDetectedSongs.length}…`;
-      await new Promise(r => setTimeout(r, 120));
-    }
-
-    btn.disabled = false;
-    btn.innerHTML = `✅ Saved ${splitterDetectedSongs.length} songs!`;
-    showToast(`✅ ${splitterDetectedSongs.length} PDFs saved`);
-  } catch(err) {
-    console.error(err);
-    btn.disabled = false;
-    btn.innerHTML = 'Save Individual Songs';
-    showToast('Error splitting — ' + err.message);
-  }
-}
-
-function resetSplitter() {
-  splitterPdfBytes = null; splitterPages = [];
-  splitterDetectedSongs = []; splitterFileName = '';
-  const drop = document.getElementById('splitter-drop');
-  drop.innerHTML = `<div class="splitter-drop-emo">✂️</div><div class="splitter-drop-title">Upload a PDF to split</div><div class="splitter-drop-sub">One PDF with multiple songs — we'll detect where each song starts and let you save them individually</div>`;
-  drop.style.cursor = 'pointer';
-  drop.onclick = () => document.getElementById('splitter-file-inp').click();
-  document.getElementById('splitter-songs').innerHTML = '';
-  document.getElementById('splitter-save-wrap').style.display = 'none';
-  document.getElementById('splitter-sens-bar').style.display = 'none';
-  document.getElementById('splitter-prog').style.display = 'none';
-  document.getElementById('splitter-prog-fill').style.width = '0%';
-  const btn = document.getElementById('splitter-save-btn');
-  if (btn) { btn.disabled = false; btn.innerHTML = '&#x2913; Save Individual Songs'; }
 }
 
 // ═══════════════════════════════════════════════════
 // BOOT
+
 // ═══════════════════════════════════════════════════
 (async function boot() {
   loadTheme();
